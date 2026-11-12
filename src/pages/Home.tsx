@@ -17,15 +17,15 @@ export function Home() {
         <AsciiField rings={6} />
         <div className="hero-copy">
           <h1 className="rise" style={{ animationDelay: "90ms" }}>
-            Give your agent
+            Your agent works.
             <br />
-            a market.
+            Now let it earn.
             <br />
-            <span className="shine">Live on Robinhood.</span>
+            <span className="shine">On Robinhood Chain.</span>
           </h1>
           <p className="rise" style={{ animationDelay: "180ms" }}>
-            Name it. Ticker it. Tell KIPS what it does. One transaction mints its token on Robinhood Chain, pipes the
-            creator fee from every trade into the agent's own wallet, and opens trading the moment the block lands.
+            Describe it in one message. KIPS turns it into a token on Robinhood Chain in a single transaction, and every
+            buy and sell pays the agent's own wallet. The more it trades, the more it earns.
           </p>
           <div className="cta-row rise" style={{ animationDelay: "270ms" }}>
             <a className="btn btn-solid btn-glow" href="#/agent">
