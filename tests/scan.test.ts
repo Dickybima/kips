@@ -110,3 +110,11 @@ describe("scanAgents", () => {
     expect(next).not.toBeNull();
   });
 });
+
+describe("hidden tokens", () => {
+  it("are left out of the agent scan", async () => {
+    const { isHidden } = await import("../src/lib/kips/hidden");
+    expect(isHidden("0x88b8824c22776f8fcef5993cdec13693a0cbf34a")).toBe(true);
+    expect(isHidden("0x0000000000000000000000000000000000000001")).toBe(false);
+  });
+});

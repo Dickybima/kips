@@ -2,6 +2,7 @@ import type { Address } from "viem";
 import { curveAbi, factoryAbi, tokenAbi } from "./abi";
 import { FACTORY_DEPLOY_BLOCK, KIPS_START_BLOCK, NATIVE_QUOTE, PONS, publicClient } from "./chain";
 import { decodeDescription, type AgentProfile } from "../kips/agent";
+import { isHidden } from "../kips/hidden";
 
 const factory = { address: PONS.factory, abi: factoryAbi } as const;
 
@@ -238,7 +239,7 @@ export async function scanAgents(
     const metas = await Promise.all(logs.map((l) => readMeta(l.token).catch(() => null)));
     logs.forEach((l, i) => {
       const meta = metas[i];
-      if (!meta?.profile) return;
+      if (!meta?.profile || isHidden(l.token)) return;
       const agent = { meta, curve: l.curve, block: l.blockNumber };
       agents.push(agent);
       opts.onFound?.(agent);
