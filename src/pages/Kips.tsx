@@ -34,7 +34,8 @@ const HELP = [
   "back              go to the previous question",
   "edit <field>      change one answer (e.g. edit ticker)",
   "status            show your answers so far",
-  "connect           connect your wallet",
+  "connect           choose and connect a wallet",
+  "disconnect        disconnect the wallet",
   "launch            simulate the launch (after the last question)",
   "confirm / cancel  sign, or drop, a simulated launch",
   "restart           start over",
@@ -54,7 +55,7 @@ function blockedReason(env: LaunchEnv, hasAccount: boolean): string | null {
 }
 
 export function Kips() {
-  const { account, connect, getClient } = useWallet();
+  const { account, walletName, wallets, connectWith, disconnect, getClient } = useWallet();
   const [lines, setLines] = useState<Line[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -202,15 +203,30 @@ export function Kips() {
     if (cmd === "help") return HELP.forEach((h) => say("dim", `  ${h}`));
     if (cmd === "clear") return setLines([]);
     if (cmd === "status") return summary();
-    if (cmd === "connect") {
-      if (account) return say("dim", `Already connected as ${shortAddr(account)}.`);
+    if (cmd === "connect" || cmd.startsWith("connect ")) {
+      const arg = cmd.slice(7).trim();
+      if (!arg && account) return say("dim", `Connected as ${shortAddr(account)} with ${walletName}. Type disconnect to switch.`);
+      if (wallets.length === 0) return say("err", "No wallet found in this browser. Install one (MetaMask, Rabby, …) and reload.");
+      const choice = arg ? wallets[Number(arg) - 1] : wallets.length === 1 ? wallets[0] : null;
+      if (!choice) {
+        if (arg) say("err", `Pick a number from 1 to ${wallets.length}.`);
+        else say("sys", "Which wallet?");
+        wallets.forEach((w, i) => say("dim", `  ${i + 1}  ${w.name}`));
+        return say("dim", "Type connect <number>, for example connect 1.");
+      }
+      say("dim", `Connecting ${choice.name}. Check your wallet…`);
       try {
-        await connect();
-        say("ok", "Wallet connected.");
+        await connectWith(choice.id);
+        say("ok", `Connected with ${choice.name}.`);
       } catch (err) {
         say("err", errMsg(err));
       }
       return;
+    }
+    if (cmd === "disconnect") {
+      if (!account) return say("dim", "No wallet is connected.");
+      disconnect();
+      return say("dim", "Wallet disconnected.");
     }
     if (cmd === "restart") {
       session.current = fresh();

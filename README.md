@@ -7,6 +7,7 @@ Every KIPS agent is a Pons v2 token. KIPS adds no contracts and no backend: it i
 - **Home** — what the project is and how it works.
 - **Explore** — scans Pons v2 `TokenLaunched` events and lists the tokens that carry a kips agent profile.
 - **Kips** — a terminal-style chat that launches an agent. It asks for the agent's name, ticker, description, category, skills, endpoint and fee wallet, simulates the launch on the Pons v2 factory, and sends it once you type `confirm`. An optional first buy goes through the Pons launch-and-buy router in the same transaction.
+- **Wallets** — the connect button opens a picker listing every wallet installed in the browser (EIP-6963), with switch and disconnect. In the Kips terminal, `connect` lists the same wallets by number.
 - **Trade** — buy and sell on the agent's bonding curve, with quotes computed locally from on-chain curve state.
 
 ## How it sits on Pons v2
