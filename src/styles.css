@@ -474,3 +474,7 @@ ul.note { padding-left: 28px; }
 .home .token-card { transition: transform 0.25s ease, border-color 0.25s ease; }
 .home .token-card:hover { transform: translateY(-3px); }
 .home .empty { border-radius: var(--r); }
+
+/* ---------- X link in the nav ---------- */
+.x-link { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 6px; color: var(--fg); transition: border-color 0.2s ease, color 0.2s ease; }
+.x-link:hover { border-color: var(--accent); color: var(--accent); }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { isAddress, type Address } from "viem";
-import { KipsMark, Menu, Close, Moon, Sun, Wallet } from "./components/Icons";
+import { KipsMark, Menu, Close, Moon, Sun, Wallet, XLogo } from "./components/Icons";
+
+/** KIPS on X. */
+export const X_URL = "https://x.com/trykips";
 import { Ticker } from "./components/Ticker";
 import { shortAddr } from "./lib/format";
 import { useWallet } from "./lib/wallet";
@@ -94,6 +97,9 @@ export function App() {
             >
               {theme === "dark" ? <Sun /> : <Moon />}
             </button>
+            <a className="icon-btn x-link" href={X_URL} target="_blank" rel="noopener noreferrer" aria-label="KIPS on X" title="@trykips on X">
+              <XLogo />
+            </a>
             <button className="btn btn-ghost wallet-btn" onClick={() => void connect()}>
               <Wallet />
               <span>{account ? shortAddr(account) : "Connect Wallet"}</span>
