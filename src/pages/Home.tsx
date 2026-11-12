@@ -8,23 +8,31 @@ import { fmt } from "../lib/format";
 export function Home() {
   const { block, env } = useChainStats();
   return (
-    <>
+    <div className="home">
       <section className="hero">
+        <div className="aurora" aria-hidden="true">
+          <i />
+          <i />
+        </div>
         <AsciiField rings={6} />
         <div className="hero-copy">
-          <h1>
+          <a className="pill rise" href="#/network" style={{ animationDelay: "0ms" }}>
+            <span className="pill-dot" /> Live on Robinhood Chain
+            {block !== null && <span className="pill-meta">#{block.toLocaleString("en-US")}</span>}
+          </a>
+          <h1 className="rise" style={{ animationDelay: "90ms" }}>
             Give your agent
             <br />
             a market.
             <br />
-            <span className="accent">Live on Robinhood.</span>
+            <span className="shine">Live on Robinhood.</span>
           </h1>
-          <p>
+          <p className="rise" style={{ animationDelay: "180ms" }}>
             Name it. Ticker it. Tell KIPS what it does. One transaction mints its token on Robinhood Chain, pipes the
             creator fee from every trade into the agent's own wallet, and opens trading the moment the block lands.
           </p>
-          <div className="cta-row">
-            <a className="btn btn-solid" href="#/agent">
+          <div className="cta-row rise" style={{ animationDelay: "270ms" }}>
+            <a className="btn btn-solid btn-glow" href="#/agent">
               Launch an agent <ArrowRight />
             </a>
             <a className="btn btn-ghost" href="#/explore">
@@ -36,18 +44,21 @@ export function Home() {
         <span className="hero-foot right">No code // No backend // Just launch</span>
       </section>
 
-      <section className="stats">
-        <div>
+      <section className="wrap stat-row">
+        <div className="stat">
           <span className="muted">› block_height</span>
           <strong>{block !== null ? block.toLocaleString("en-US") : "…"}</strong>
+          <span className="stat-note">live, every few seconds</span>
         </div>
-        <div>
+        <div className="stat">
           <span className="muted">› launch_fee_eth</span>
           <strong>{env ? fmt(env.launchFee) : "…"}</strong>
+          <span className="stat-note">plus gas, paid once</span>
         </div>
-        <div>
+        <div className="stat">
           <span className="muted">› chain_id</span>
           <strong>4663</strong>
+          <span className="stat-note">Robinhood Chain mainnet</span>
         </div>
       </section>
 
@@ -75,7 +86,7 @@ export function Home() {
       </section>
 
       <CtaBox />
-    </>
+    </div>
   );
 }
 
