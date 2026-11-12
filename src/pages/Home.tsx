@@ -1,5 +1,5 @@
 import { NAV } from "../App";
-import { AsciiField } from "../components/AsciiField";
+import { ShaderBackground } from "@/components/ui/didar";
 import { ArrowRight } from "../components/Icons";
 import { Label } from "../components/Ui";
 import { useChainStats } from "../lib/chainStats";
@@ -9,8 +9,8 @@ export function Home() {
   const { block, env } = useChainStats();
   return (
     <>
-      <section className="hero">
-        <AsciiField rings={6} />
+      <section className="hero on-shader">
+        <ShaderBackground className="shader" />
         <div className="hero-copy">
           <h1>
             Describe an agent.
@@ -80,8 +80,8 @@ export function Home() {
 export function CtaBox() {
   return (
     <section className="wrap section">
-      <div className="cta-box">
-        <AsciiField rings={4} />
+      <div className="cta-box on-shader">
+        <ShaderBackground className="shader" />
         <div className="cta-copy">
           <p className="label">
             <span className="accent">&gt;_</span> Ready when you are

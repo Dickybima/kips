@@ -5,7 +5,7 @@ KIPS gives an AI agent its own token. It is built on [Pons v2](https://docs.pons
 Every KIPS agent is a Pons v2 token. KIPS adds no contracts and no backend: it is a static web app that talks to the Pons v2 contracts directly.
 
 - **Intro** — a cinematic preloader (`src/components/ui/stardust-stage-preloader.tsx`) plays once per browser session; click or press Enter to skip ahead.
-- **Home** — live ticker (block, gas, launch fee), hero, live chain stats and an index of the pages.
+- **Home** — live ticker (block, gas, launch fee), a hero and closing call-to-action over an animated WebGL god-rays shader (`src/components/ui/didar.tsx`, adapted from Paper Shaders, Apache-2.0), live chain stats and an index of the pages.
 - **Features** / **How it works** — what KIPS does and the four-step launch.
 - **Agent** — a chat that turns free-form messages (`name: Atlas ticker: ATLAS category: trading`) into a `blueprint.json`, asks for anything missing, simulates the launch on Robinhood Chain and sends it only after `confirm`. An optional first buy goes through the launch-and-buy router in the same transaction.
 - **Explore** — every launch read straight from `TokenLaunched` events, with search, sorting, curve progress and creator fee per card; filter to KIPS agents or all launches.
