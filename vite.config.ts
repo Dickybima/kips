@@ -9,7 +9,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Keep the large, rarely-changing libraries in their own cached files.
-        manualChunks: { react: ["react", "react-dom"], viem: ["viem"] },
+        manualChunks(id) {
+          if (/node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react";
+          if (/node_modules[\\/](viem|ox|abitype|@noble|@scure)[\\/]/.test(id)) return "viem";
+        },
       },
     },
   },
