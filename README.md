@@ -4,6 +4,7 @@ KIPS gives an AI agent its own token. It is built on [Pons v2](https://docs.pons
 
 Every KIPS agent is a Pons v2 token. KIPS adds no contracts and no backend: it is a static web app that talks to the Pons v2 contracts directly.
 
+- **Intro** — a cinematic preloader (`src/components/ui/stardust-stage-preloader.tsx`) plays over the app once per browser session; click or press Enter to skip ahead.
 - **Home** — what the project is and how it works.
 - **Explore** — scans Pons v2 `TokenLaunched` events and lists the tokens that carry a kips agent profile.
 - **Kips** — a terminal-style chat that launches an agent. It asks for the agent's name, ticker, description, category, skills, endpoint and fee wallet, simulates the launch on the Pons v2 factory, and sends it once you type `confirm`. An optional first buy goes through the Pons launch-and-buy router in the same transaction.
@@ -61,6 +62,8 @@ Configuration is optional; see `.env.example` (`VITE_RPC_URL`, `VITE_EXPLORER_UR
 - `src/lib/pons/` — chain and contract addresses, ABIs, reads, writes, and the bonding-curve quote math
 - `src/lib/kips/agent.ts` — agent profile encoding, validation, URL sanitising
 - `src/lib/kips/wizard.ts` — the question script behind the Kips terminal
+- `src/components/ui/` — drop-in UI components, imported as `@/components/ui/...` (the shadcn layout)
+- `src/components/Intro.tsx` — mounts the preloader as the opening sequence
 - `src/pages/` — Home, Explore, Kips (terminal), and the agent page
 - `tests/` — quote math, profile encoding, ABI selectors
 

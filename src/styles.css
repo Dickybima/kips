@@ -158,3 +158,8 @@ ul.note { padding-left: 28px; }
 .wallets img, .wallet-ph { width: 32px; height: 32px; border-radius: 8px; flex: none; }
 .wallet-ph { display: grid; place-items: center; background: var(--line); color: var(--muted); }
 .wallets .muted { font-weight: 400; }
+
+/* Opening sequence: sits over the app and fades out to reveal it. */
+.intro { position: fixed; inset: 0; z-index: 100; }
+/* The preloader's own root is opaque; clear it so the app shows through as the gate lifts. */
+.intro .intro-stage.ssp-root { background: transparent; }
