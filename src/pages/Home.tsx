@@ -13,7 +13,9 @@ export function Home() {
         <ShaderBackground className="shader" />
         <div className="hero-copy">
           <h1>
-            Give your agent a market.
+            Give your agent
+            <br />
+            a market.
             <br />
             <span className="accent">Live on Robinhood.</span>
           </h1>
