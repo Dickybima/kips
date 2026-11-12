@@ -147,7 +147,7 @@ export interface LaunchLog {
   blockNumber: bigint;
 }
 
-const MIN_CHUNK = 500n;
+const MIN_CHUNK = 5_000n;
 
 /**
  * Walks TokenLaunched logs backwards from `toBlock`, newest first. RPC nodes
@@ -159,30 +159,67 @@ export async function scanLaunches(
   opts: { want?: number; maxRequests?: number; chunk?: bigint } = {},
 ): Promise<{ logs: LaunchLog[]; next: bigint | null }> {
   const want = opts.want ?? 24;
-  let chunk = opts.chunk ?? 20_000n;
+  // Robinhood Chain blocks are fast and launches are frequent; the window
+  // adapts to how dense the launches turn out to be.
+  let chunk = opts.chunk ?? 200_000n;
   let requests = opts.maxRequests ?? 10;
   let to = toBlock;
   const out: LaunchLog[] = [];
 
   while (to >= FACTORY_DEPLOY_BLOCK && out.length < want && requests > 0) {
     const from = to - chunk + 1n > FACTORY_DEPLOY_BLOCK ? to - chunk + 1n : FACTORY_DEPLOY_BLOCK;
+    let logs;
     try {
-      const logs = await publicClient.getContractEvents({
+      logs = await publicClient.getContractEvents({
         ...factory,
         eventName: "TokenLaunched",
         fromBlock: from,
         toBlock: to,
         strict: true,
       });
-      requests--;
-      for (const l of logs.reverse()) {
-        out.push({ token: l.args.token, curve: l.args.curve, deployer: l.args.deployer, blockNumber: l.blockNumber });
-      }
-      to = from - 1n;
     } catch (e) {
       if (chunk <= MIN_CHUNK) throw e;
       chunk = chunk / 2n > MIN_CHUNK ? chunk / 2n : MIN_CHUNK;
+      continue;
     }
+    requests--;
+    for (const l of logs.reverse()) {
+      out.push({ token: l.args.token, curve: l.args.curve, deployer: l.args.deployer, blockNumber: l.blockNumber });
+    }
+    to = from - 1n;
+    if (logs.length > want * 2) chunk = chunk / 4n > MIN_CHUNK ? chunk / 4n : MIN_CHUNK;
+    else if (logs.length < want / 4) chunk = chunk * 4n < 8_000_000n ? chunk * 4n : 8_000_000n;
+  }
+
+  if (out.length > want) {
+    // Cut at a block boundary so no launch is skipped: everything in the
+    // last kept block stays, and the next page resumes just below it.
+    const edge = out[want - 1].blockNumber;
+    const kept = out.filter((l) => l.blockNumber >= edge);
+    return { logs: kept, next: edge - 1n >= FACTORY_DEPLOY_BLOCK ? edge - 1n : null };
   }
   return { logs: out, next: to >= FACTORY_DEPLOY_BLOCK ? to : null };
+}
+
+export interface CardStats {
+  creatorTaxBps: number;
+  graduationThreshold: bigint;
+  raised: bigint;
+  graduated: boolean;
+  creatorFeeRecipient: Address;
+}
+
+/** Light read for explore cards: progress toward graduation and the creator fee. */
+export async function readCardStats(token: Address, curve: Address): Promise<CardStats> {
+  const [l, raised] = await Promise.all([
+    publicClient.readContract({ ...factory, functionName: "getLaunchedToken", args: [token] }),
+    publicClient.readContract({ address: curve, abi: curveAbi, functionName: "realQuoteReserve" }).catch(() => 0n),
+  ]);
+  return {
+    creatorTaxBps: l.creatorTaxBps,
+    graduationThreshold: l.graduationThreshold,
+    raised,
+    graduated: l.phase !== 0,
+    creatorFeeRecipient: l.creatorFeeRecipient,
+  };
 }

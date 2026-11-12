@@ -15,7 +15,7 @@ export const robinhoodChain = defineChain({
     : {}),
 });
 
-/** Pons v2 deployment on Robinhood Chain mainnet. */
+/** Pons v2 deployment on Robinhood Chain mainnet (verified by simulation against the live chain). */
 export const PONS = {
   factory: "0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e",
   launchAndBuyRouter: "0xe33E9E479dF8802cb0866d5d05258bEc4cF62948",
@@ -33,7 +33,8 @@ export const NATIVE_QUOTE: Address = zeroAddress;
 
 export const publicClient = createPublicClient({
   chain: robinhoodChain,
-  transport: http(RPC_URL, { batch: true }),
+  // Small batches: the public RPC rejects very large JSON-RPC batches.
+  transport: http(RPC_URL, { batch: { batchSize: 40, wait: 16 }, retryCount: 2 }),
 });
 
 export function explorerLink(kind: "tx" | "address", value: string): string | null {

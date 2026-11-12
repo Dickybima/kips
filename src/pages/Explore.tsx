@@ -1,17 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAddress } from "viem";
+import { ArrowRight, Globe, Search, XLogo } from "../components/Icons";
+import { Corners, CopyButton, Leader, PageHead } from "../components/Ui";
 import { safeUrl } from "../lib/kips/agent";
-import { errMsg, shortAddr } from "../lib/format";
+import { errMsg, fmt, pct, shortAddr } from "../lib/format";
 import { publicClient } from "../lib/pons/chain";
-import { readTokenMeta, scanLaunches, type TokenMeta } from "../lib/pons/read";
+import { graduationProgressBps } from "../lib/pons/quote";
+import { readCardStats, readTokenMeta, scanLaunches, type CardStats, type TokenMeta } from "../lib/pons/read";
+
+interface Item {
+  meta: TokenMeta;
+  curve: `0x${string}`;
+  block: bigint;
+  stats: CardStats | null;
+}
+
+type Sort = "newest" | "oldest" | "name";
 
 export function Explore() {
-  const [items, setItems] = useState<TokenMeta[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [cursor, setCursor] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [agentsOnly, setAgentsOnly] = useState(true);
-  const [lookup, setLookup] = useState("");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<Sort>("newest");
   const started = useRef(false);
 
   const load = useCallback(async (from: bigint | undefined) => {
@@ -20,10 +33,22 @@ export function Explore() {
     try {
       const to = from ?? (await publicClient.getBlockNumber());
       const { logs, next } = await scanLaunches(to);
-      // A token whose metadata cannot be read is skipped rather than failing the page.
-      const metas = await Promise.all(logs.map((l) => readTokenMeta(l.token).catch(() => null)));
-      setItems((prev) => [...prev, ...metas.filter((m): m is TokenMeta => m !== null)]);
+      const metas = await Promise.all(
+        logs.map(async (l): Promise<Item | null> => {
+          const meta = await readTokenMeta(l.token).catch(() => null);
+          return meta ? { meta, curve: l.curve, block: l.blockNumber, stats: null } : null;
+        }),
+      );
+      const fresh = metas.filter((m): m is Item => m !== null);
+      setItems((prev) => [...prev, ...fresh]);
       setCursor(next);
+      // Progress and fees fill in after the cards are on screen.
+      for (const it of fresh) {
+        readCardStats(it.meta.token, it.curve).then(
+          (stats) => setItems((prev) => prev.map((p) => (p.meta.token === it.meta.token ? { ...p, stats } : p))),
+          () => {},
+        );
+      }
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -37,64 +62,121 @@ export function Explore() {
     void load(undefined);
   }, [load]);
 
-  const shown = agentsOnly ? items.filter((i) => i.profile) : items;
-  const lookupOk = isAddress(lookup.trim());
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = agentsOnly ? items.filter((i) => i.meta.profile) : items;
+    if (q) {
+      list = list.filter(
+        (i) =>
+          i.meta.name.toLowerCase().includes(q) ||
+          i.meta.symbol.toLowerCase().includes(q) ||
+          i.meta.token.toLowerCase().includes(q),
+      );
+    }
+    const sorted = [...list];
+    if (sort === "oldest") sorted.sort((a, b) => (a.block < b.block ? -1 : a.block > b.block ? 1 : 0));
+    else if (sort === "name") sorted.sort((a, b) => a.meta.name.localeCompare(b.meta.name));
+    else sorted.sort((a, b) => (a.block > b.block ? -1 : a.block < b.block ? 1 : 0));
+    return sorted;
+  }, [items, agentsOnly, query, sort]);
+
+  const q = query.trim();
 
   return (
-    <>
-      <h2 className="page-title">Explore</h2>
+    <section className="wrap section">
+      <PageHead n="04" label="Explore" title="Every agent launched on Robinhood Chain.">
+        Tokens appear here straight from the chain, newest first. Agents launched through KIPS carry their profile with
+        them.
+      </PageHead>
 
-      <div className="bar">
+      <form
+        className="filters"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isAddress(q)) location.hash = `#/agent/${q}`;
+        }}
+      >
+        <label className="grep">
+          <Search />
+          <input placeholder="grep name, ticker, or contract…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </label>
+        <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort">
+          <option value="newest">--sort newest</option>
+          <option value="oldest">--sort oldest</option>
+          <option value="name">--sort name</option>
+        </select>
+      </form>
+
+      <div className="seg-row">
+        <span className="dot-label">
+          <span className="accent">●</span> {agentsOnly ? "KIPS agents" : "All launches"}
+        </span>
         <div className="seg">
           <button className={agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(true)}>
-            KIPS agents
+            agents
           </button>
           <button className={!agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(false)}>
-            All launches
+            all
           </button>
         </div>
-        <form
-          className="lookup"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (lookupOk) location.hash = `#/agent/${lookup.trim()}`;
-          }}
-        >
-          <input placeholder="Open by token address 0x…" value={lookup} onChange={(e) => setLookup(e.target.value)} />
-          <button className="btn" disabled={!lookupOk}>
-            Open
-          </button>
-        </form>
       </div>
 
-      {error && <p className="note bad">Could not read launches from the chain: {error}</p>}
+      {isAddress(q) && (
+        <p className="muted small">
+          Press Enter to open <code>{shortAddr(q)}</code> directly.
+        </p>
+      )}
+      {error && <p className="note bad">Could not read launches from Robinhood Chain: {error}</p>}
 
-      <div className="grid">
-        {shown.map((m) => (
-          <AgentCard key={m.token} meta={m} />
-        ))}
-      </div>
+      {shown.length > 0 && (
+        <div className="card-grid">
+          {shown.map((i) => (
+            <TokenCard key={i.meta.token} item={i} />
+          ))}
+        </div>
+      )}
 
       {!loading && !error && shown.length === 0 && (
-        <p className="note">
-          {agentsOnly
-            ? `No KIPS agents among the ${items.length} most recent launches scanned so far.`
-            : "No launches found in the scanned range."}
-        </p>
+        <div className="empty">
+          <pre aria-hidden="true">{`   .-------.
+  /  ? ? ?  \\
+ |  [_____]  |
+  \\_________/`}</pre>
+          <p className="muted">
+            {q
+              ? "Nothing matches that search in what has been scanned so far."
+              : agentsOnly
+                ? `No KIPS agents among the ${items.length} most recent launches yet. Be the first.`
+                : "No launches found in the scanned range."}
+          </p>
+          {!q && agentsOnly && (
+            <div className="cta-row">
+              <a className="btn btn-solid" href="#/agent">
+                Launch the first one <ArrowRight />
+              </a>
+              {items.length > 0 && (
+                <button className="btn btn-ghost" onClick={() => setAgentsOnly(false)}>
+                  Show all launches
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="center">
         {loading ? (
-          <span className="muted">Scanning launches…</span>
+          <span className="muted">scanning launches…</span>
         ) : cursor === null ? (
-          <span className="muted">Scanned back to the first launch.</span>
+          <span className="muted">// scanned back to the first launch</span>
         ) : (
-          <button className="btn" onClick={() => void load(cursor)}>
+          <button className="btn btn-ghost" onClick={() => void load(cursor)}>
             {error ? "Retry" : "Scan older launches"}
           </button>
         )}
       </div>
-    </>
+      <p className="center muted small">// every token launched on Robinhood Chain through this launch protocol</p>
+    </section>
   );
 }
 
@@ -105,29 +187,48 @@ export function Logo({ url, symbol }: { url: string; symbol: string }) {
   return <img className="logo" src={src} alt="" loading="lazy" onError={() => setBroken(true)} />;
 }
 
-function AgentCard({ meta }: { meta: TokenMeta }) {
+function TokenCard({ item }: { item: Item }) {
+  const { meta, stats } = item;
+  const progress = stats ? graduationProgressBps(stats.raised, stats.graduationThreshold) : null;
+  const x = safeUrl(meta.socials.twitter);
+  const web = safeUrl(meta.socials.website);
   return (
-    <a className="card" href={`#/agent/${meta.token}`}>
+    <Corners className="token-card" accent={!!meta.profile}>
       <div className="row">
         <Logo url={meta.logo} symbol={meta.symbol} />
         <div className="grow">
-          <strong>{meta.name}</strong>
-          <div className="muted">
-            ${meta.symbol} · {shortAddr(meta.token)}
-          </div>
+          <strong className="ellipsis">{meta.name}</strong>
+          <div className="muted small">${meta.symbol}</div>
         </div>
-        {meta.profile && <span className="tag accent">{meta.profile.category}</span>}
+        {meta.profile ? <span className="badge">{meta.profile.category}</span> : <span className="badge badge-dim">token</span>}
       </div>
-      <p className="clamp">{meta.about || "No description."}</p>
-      {meta.profile && meta.profile.skills.length > 0 && (
-        <div className="tags">
-          {meta.profile.skills.map((s) => (
-            <span className="tag" key={s}>
-              {s}
-            </span>
-          ))}
-        </div>
-      )}
-    </a>
+      {meta.about && <p className="muted small clamp">{meta.about}</p>}
+      <div className="leaders">
+        <Leader k="contract">{shortAddr(meta.token)}</Leader>
+        <Leader k="raised">{stats ? `${fmt(stats.raised)} / ${fmt(stats.graduationThreshold)} ETH` : "…"}</Leader>
+        <Leader k="progress">{stats ? (stats.graduated ? "graduated" : pct(progress ?? 0)) : "…"}</Leader>
+        <Leader k="creator fee">{stats ? pct(stats.creatorTaxBps) : "…"}</Leader>
+        <Leader k="network">Robinhood Chain</Leader>
+      </div>
+      <div className="meter thin">
+        <div style={{ width: `${(progress ?? 0) / 100}%` }} />
+      </div>
+      <div className="chip-row">
+        {x && (
+          <a className="chip" href={x} target="_blank" rel="noopener noreferrer">
+            <XLogo width={13} height={13} /> X
+          </a>
+        )}
+        {web && (
+          <a className="chip" href={web} target="_blank" rel="noopener noreferrer">
+            <Globe width={14} height={14} /> Website
+          </a>
+        )}
+        <a className="chip chip-accent" href={`#/agent/${meta.token}`}>
+          Trade <ArrowRight width={14} height={14} />
+        </a>
+        <CopyButton value={meta.token} label="Copy contract" />
+      </div>
+    </Corners>
   );
 }

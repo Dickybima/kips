@@ -21,6 +21,7 @@ import {
 } from "../lib/pons/read";
 import { buy, sell } from "../lib/pons/write";
 import { useWallet } from "../lib/wallet";
+import { CopyButton } from "../components/Ui";
 import { Logo } from "./Explore";
 
 const SLIPPAGE_BPS = 300n;
@@ -72,13 +73,23 @@ export function AgentPage({ token }: { token: Address }) {
     };
   }, [launched, refresh]);
 
-  if (error && launched === undefined) return <p className="note bad">Could not read this token: {error}</p>;
-  if (launched === undefined) return <p className="muted">Loading agent…</p>;
+  const shell = (body: React.ReactNode) => (
+    <section className="wrap section token-page">
+      <p className="label crumbs">
+        <a href="#/explore">← explore</a> <span className="muted">/</span>{" "}
+        <span className="accent">{meta ? `$${meta.symbol}` : shortAddr(token)}</span>
+      </p>
+      {body}
+    </section>
+  );
+
+  if (error && launched === undefined) return shell(<p className="note bad">Could not read this token: {error}</p>);
+  if (launched === undefined) return shell(<p className="muted">loading agent…</p>);
   if (launched === null) {
-    return (
+    return shell(
       <p className="note bad">
         <code>{token}</code> is not a token KIPS can open.
-      </p>
+      </p>,
     );
   }
 
@@ -98,13 +109,13 @@ export function AgentPage({ token }: { token: Address }) {
         .filter((l): l is readonly [typeof l[0], string] => l[1] !== null)
     : [];
 
-  return (
+  return shell(
     <div className="two">
       <section className="panel">
         <div className="row">
           <Logo url={meta?.logo ?? ""} symbol={meta?.symbol ?? "?"} />
           <div className="grow">
-            <h2>{meta?.name ?? shortAddr(token)}</h2>
+            <h1 className="token-name">{meta?.name ?? shortAddr(token)}</h1>
             <div className="muted">
               ${meta?.symbol ?? "?"} ·{" "}
               {tokenUrl ? (
@@ -112,8 +123,9 @@ export function AgentPage({ token }: { token: Address }) {
                   {shortAddr(token)}
                 </a>
               ) : (
-                <code>{token}</code>
-              )}
+                <code>{shortAddr(token)}</code>
+              )}{" "}
+              <CopyButton value={token} label="Copy" className="chip chip-sm" />
             </div>
           </div>
           {meta?.profile ? (
@@ -171,7 +183,7 @@ export function AgentPage({ token }: { token: Address }) {
       </section>
 
       <aside className="panel">
-        <h3>Bonding curve</h3>
+        <h3>bonding_curve</h3>
         <div className="meter" role="progressbar" aria-valuenow={progress / 100} aria-valuemin={0} aria-valuemax={100}>
           <div style={{ width: `${progress / 100}%` }} />
         </div>
@@ -214,7 +226,7 @@ export function AgentPage({ token }: { token: Address }) {
         )}
         {error && <p className="note bad">{error}</p>}
       </aside>
-    </div>
+    </div>,
   );
 }
 

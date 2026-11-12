@@ -27,6 +27,8 @@ interface WalletState {
   connect(): Promise<void>;
   connectWith(id: string): Promise<void>;
   disconnect(): void;
+  /** Adds Robinhood Chain to the connected (or first detected) wallet and switches to it. */
+  addNetwork(): Promise<void>;
   /** Returns a client on Robinhood Chain, prompting a network switch if needed. */
   getClient(): Promise<WalletClient>;
 }
@@ -179,6 +181,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setOpen(true);
   }, []);
 
+  const addNetwork = useCallback(async () => {
+    const p = active?.provider ?? wallets[0]?.provider;
+    if (!p) throw new Error("No wallet found in this browser.");
+    await ensureChain(p);
+  }, [active, wallets]);
+
   const getClient = useCallback(async () => {
     if (!active || !account) throw new Error("Connect a wallet first.");
     await ensureChain(active.provider);
@@ -206,8 +214,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }
 
   const value = useMemo(
-    () => ({ account, walletName: active?.name ?? null, wallets, connect, connectWith, disconnect, getClient }),
-    [account, active, wallets, connect, connectWith, disconnect, getClient],
+    () => ({ account, walletName: active?.name ?? null, wallets, connect, connectWith, disconnect, addNetwork, getClient }),
+    [account, active, wallets, connect, connectWith, disconnect, addNetwork, getClient],
   );
 
   return (

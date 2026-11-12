@@ -4,12 +4,16 @@ KIPS gives an AI agent its own token. It is built on [Pons v2](https://docs.pons
 
 Every KIPS agent is a Pons v2 token. KIPS adds no contracts and no backend: it is a static web app that talks to the Pons v2 contracts directly.
 
-- **Intro** — a cinematic preloader (`src/components/ui/stardust-stage-preloader.tsx`) plays over the app once per browser session; click or press Enter to skip ahead.
-- **Home** — what the project is and how it works.
-- **Explore** — scans Pons v2 `TokenLaunched` events and lists the tokens that carry a kips agent profile.
-- **Kips** — a terminal-style chat that launches an agent. It asks for the agent's name, ticker, description, category, skills, endpoint and fee wallet, simulates the launch on the Pons v2 factory, and sends it once you type `confirm`. An optional first buy goes through the Pons launch-and-buy router in the same transaction.
-- **Wallets** — the connect button opens a picker listing every wallet installed in the browser (EIP-6963), with switch and disconnect. In the Kips terminal, `connect` lists the same wallets by number.
-- **Trade** — buy and sell on the agent's bonding curve, with quotes computed locally from on-chain curve state.
+- **Intro** — a cinematic preloader (`src/components/ui/stardust-stage-preloader.tsx`) plays once per browser session; click or press Enter to skip ahead.
+- **Home** — live ticker (block, gas, launch fee), hero, live chain stats and an index of the pages.
+- **Features** / **How it works** — what KIPS does and the four-step launch.
+- **Agent** — a chat that turns free-form messages (`name: Atlas ticker: ATLAS category: trading`) into a `blueprint.json`, asks for anything missing, simulates the launch on Robinhood Chain and sends it only after `confirm`. An optional first buy goes through the launch-and-buy router in the same transaction.
+- **Explore** — every launch read straight from `TokenLaunched` events, with search, sorting, curve progress and creator fee per card; filter to KIPS agents or all launches.
+- **Network** — live Robinhood Chain stats, launch terms and contract addresses, with an "Add to wallet" button.
+- **Trade** — buy and sell on an agent's bonding curve, with quotes computed locally from on-chain curve state.
+- **Wallets** — the connect button lists every wallet installed in the browser (EIP-6963), with switch and disconnect.
+
+The look is a dark/light terminal style in JetBrains Mono with a Robinhood-green accent.
 
 ## How it sits on Pons v2
 
@@ -64,7 +68,9 @@ Configuration is optional; see `.env.example` (`VITE_RPC_URL`, `VITE_EXPLORER_UR
 - `src/lib/kips/wizard.ts` — the question script behind the Kips terminal
 - `src/components/ui/` — drop-in UI components, imported as `@/components/ui/...` (the shadcn layout)
 - `src/components/Intro.tsx` — mounts the preloader as the opening sequence
-- `src/pages/` — Home, Explore, Kips (terminal), and the agent page
+- `src/lib/kips/intent.ts` — reads launch fields out of free-form chat messages
+- `src/lib/chainStats.ts` — one shared poller for live block, gas and launch terms
+- `src/pages/` — Home, Features, How it works, Agent (chat), Explore, Network, and the token page
 - `tests/` — quote math, profile encoding, ABI selectors
 
 ## Limits
@@ -72,4 +78,4 @@ Configuration is optional; see `.env.example` (`VITE_RPC_URL`, `VITE_EXPLORER_UR
 - ETH-paired curves only.
 - Trading covers the bonding-curve phase. After graduation the token trades in its Uniswap v4 pool, which KIPS does not route yet.
 - Discovery reads logs from the RPC and filters client-side, newest first. An indexer would be the next step once there are many agents.
-- Contract addresses and ABIs were taken from a community SDK that mirrors the Pons v2 deployment, and have not yet been exercised against the live chain from this repository. Verify against the official Pons docs before sending real funds.
+- Contract addresses and ABIs come from a community SDK that mirrors the Pons v2 deployment. They have been checked against Robinhood Chain mainnet by simulating `launchToken`, `launchAndBuy` and `buy` (with an overridden balance), and the local quote math matches the simulated amounts. No real launch has been sent from this repository yet.

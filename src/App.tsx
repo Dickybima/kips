@@ -1,62 +1,132 @@
 import { useEffect, useState } from "react";
 import { isAddress, type Address } from "viem";
+import { KipsMark, Menu, Close, Moon, Sun, Wallet } from "./components/Icons";
+import { Ticker } from "./components/Ticker";
 import { shortAddr } from "./lib/format";
 import { useWallet } from "./lib/wallet";
+import { Agent } from "./pages/Agent";
 import { AgentPage } from "./pages/AgentPage";
 import { Explore } from "./pages/Explore";
+import { Features } from "./pages/Features";
 import { Home } from "./pages/Home";
-import { Kips } from "./pages/Kips";
+import { HowItWorks } from "./pages/HowItWorks";
+import { Network } from "./pages/Network";
 
-type Route = { page: "home" } | { page: "explore" } | { page: "kips" } | { page: "agent"; token: Address };
+type Page = "home" | "features" | "how-it-works" | "agent" | "explore" | "network";
+type Route = { page: Page } | { page: "token"; token: Address };
+
+export const NAV: { page: Page; label: string; blurb: string }[] = [
+  { page: "features", label: "Features", blurb: "What KIPS handles for every agent you launch." },
+  { page: "how-it-works", label: "How it works", blurb: "Four steps from an idea to a live token." },
+  { page: "agent", label: "Agent", blurb: "Talk to KIPS and launch an agent token." },
+  { page: "explore", label: "Explore", blurb: "Every agent launched on Robinhood Chain." },
+  { page: "network", label: "Network", blurb: "Live Robinhood Chain stats and contracts." },
+];
 
 function parseRoute(hash: string): Route {
   const [, page, arg] = hash.replace(/^#/, "").split("/");
-  if (page === "explore") return { page: "explore" };
-  if (page === "kips" || page === "launch") return { page: "kips" };
-  if (page === "agent" && arg && isAddress(arg)) return { page: "agent", token: arg };
-  return { page: "home" };
+  if (page === "agent" && arg && isAddress(arg)) return { page: "token", token: arg };
+  if (page === "kips" || page === "launch") return { page: "agent" };
+  const known = NAV.find((n) => n.page === page);
+  return { page: known ? known.page : "home" };
+}
+
+type Theme = "dark" | "light";
+function initialTheme(): Theme {
+  try {
+    const t = localStorage.getItem("kips.theme");
+    if (t === "light" || t === "dark") return t;
+  } catch {
+    // fall through to the default
+  }
+  return "dark";
 }
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute(location.hash));
+  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [menu, setMenu] = useState(false);
   const { account, connect } = useWallet();
 
   useEffect(() => {
-    const onHash = () => setRoute(parseRoute(location.hash));
+    const onHash = () => {
+      setRoute(parseRoute(location.hash));
+      setMenu(false);
+      window.scrollTo(0, 0);
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("kips.theme", theme);
+    } catch {
+      // the choice just won't persist
+    }
+  }, [theme]);
+
+  const active = route.page === "token" ? "explore" : route.page;
+  const full = route.page === "agent";
+
   return (
-    <>
-      <header className="top">
-        <a className="brand" href="#/">
-          KIPS
-        </a>
-        <nav>
-          <a href="#/" className={route.page === "home" ? "on" : ""}>
-            Home
+    <div className={full ? "shell shell-full" : "shell"}>
+      <Ticker />
+      <header className="nav">
+        <div className="nav-in">
+          <a className="brand" href="#/">
+            <KipsMark />
+            <span>KIPS</span>
           </a>
-          <a href="#/explore" className={route.page === "explore" ? "on" : ""}>
-            Explore
-          </a>
-          <a href="#/kips" className={route.page === "kips" ? "on" : ""}>
-            Kips
-          </a>
-        </nav>
-        <button className="btn" onClick={() => void connect()}>
-          {account ? shortAddr(account) : "Connect wallet"}
-        </button>
+          <nav className={menu ? "links open" : "links"}>
+            {NAV.map((n) => (
+              <a key={n.page} href={`#/${n.page}`} className={active === n.page ? "on" : ""}>
+                {n.label}
+              </a>
+            ))}
+          </nav>
+          <div className="nav-end">
+            <button
+              className="icon-btn"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark" ? <Sun /> : <Moon />}
+            </button>
+            <button className="btn btn-ghost wallet-btn" onClick={() => void connect()}>
+              <Wallet />
+              <span>{account ? shortAddr(account) : "Connect Wallet"}</span>
+            </button>
+            <button className="icon-btn menu-btn" onClick={() => setMenu(!menu)} aria-label="Menu" aria-expanded={menu}>
+              {menu ? <Close /> : <Menu />}
+            </button>
+          </div>
+        </div>
       </header>
-      <main className="wrap">
-        {route.page === "explore" && <Explore />}
+
+      <main className={full ? "main-full" : "main"}>
         {route.page === "home" && <Home />}
-        {route.page === "kips" && <Kips />}
-        {route.page === "agent" && <AgentPage key={route.token} token={route.token} />}
+        {route.page === "features" && <Features />}
+        {route.page === "how-it-works" && <HowItWorks />}
+        {route.page === "agent" && <Agent />}
+        {route.page === "explore" && <Explore />}
+        {route.page === "network" && <Network />}
+        {route.page === "token" && <AgentPage key={route.token} token={route.token} />}
       </main>
-      <footer className="wrap foot">
-        KIPS in Robinhood Chain. Tokens are high risk; nothing here is financial advice.
-      </footer>
-    </>
+
+      {!full && (
+        <footer className="foot">
+          <div className="foot-in">
+            <a className="brand" href="#/">
+              <KipsMark />
+              <span>KIPS</span>
+            </a>
+            <span className="muted">© 2026 KIPS // built on Robinhood Chain</span>
+            <span className="muted small">Agent tokens are high risk. Nothing here is financial advice.</span>
+          </div>
+        </footer>
+      )}
+    </div>
   );
 }

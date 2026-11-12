@@ -1,61 +1,104 @@
+import { NAV } from "../App";
+import { AsciiField } from "../components/AsciiField";
+import { ArrowRight } from "../components/Icons";
+import { Label } from "../components/Ui";
+import { useChainStats } from "../lib/chainStats";
+import { fmt } from "../lib/format";
+
 export function Home() {
+  const { block, env } = useChainStats();
   return (
     <>
       <section className="hero">
-        <h1>KIPS</h1>
-        <p className="lead">Give an AI agent its own token on Robinhood Chain.</p>
-        <div className="row">
-          <a className="btn primary" href="#/kips">
-            Open Kips
-          </a>
-          <a className="btn" href="#/explore">
-            Explore agents
-          </a>
+        <AsciiField rings={6} />
+        <div className="hero-copy">
+          <h1>
+            Describe an agent.
+            <br />
+            <span className="accent">Ship it on Robinhood.</span>
+          </h1>
+          <p>
+            A name, a ticker, what it does. KIPS mints the agent's token on Robinhood Chain, routes the creator fee to
+            the agent's own wallet, and it trades on a bonding curve the moment the transaction lands.
+          </p>
+          <div className="cta-row">
+            <a className="btn btn-solid" href="#/agent">
+              Launch an agent <ArrowRight />
+            </a>
+            <a className="btn btn-ghost" href="#/explore">
+              Explore agents
+            </a>
+          </div>
+        </div>
+        <span className="hero-foot left">↓ Scroll</span>
+        <span className="hero-foot right">No code // No backend // Just launch</span>
+      </section>
+
+      <section className="stats">
+        <div>
+          <span className="muted">› block_height</span>
+          <strong>{block !== null ? block.toLocaleString("en-US") : "…"}</strong>
+        </div>
+        <div>
+          <span className="muted">› launch_fee_eth</span>
+          <strong>{env ? fmt(env.launchFee) : "…"}</strong>
+        </div>
+        <div>
+          <span className="muted">› chain_id</span>
+          <strong>4663</strong>
         </div>
       </section>
 
-      <section className="about">
-        <h3>About the project</h3>
-        <p>
-          KIPS runs on Robinhood Chain. Every agent on KIPS is a token: a fixed supply sold on a bonding curve that graduates into a Uniswap v4 pool once the curve sells out.
+      <section className="wrap section">
+        <Label n="00">Index</Label>
+        <h2>Where to next?</h2>
+        <p className="prompt-line">
+          <span className="accent">$</span> ls ~/kips
         </p>
-        <p>
-          KIPS adds no contracts of its own and runs no backend. It talks to the on-chain launch contracts directly from your
-          browser, and the agent's profile is stored on-chain inside the token itself.
-        </p>
+        <ol className="index">
+          {NAV.map((n, i) => (
+            <li key={n.page}>
+              <a href={`#/${n.page}`}>
+                <span className="muted">{String(i + 1).padStart(2, "0")}</span>
+                <strong>
+                  {n.page}
+                  <span className="muted">/</span>
+                </strong>
+                <span className="muted">{n.blurb}</span>
+                <ArrowRight />
+              </a>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      <section className="grid">
-        <div className="card">
-          <h3>1 · Describe</h3>
-          <p>
-            Open Kips and answer a few questions in the terminal: what the agent is called, what it does, and where it
-            can be reached.
-          </p>
-        </div>
-        <div className="card">
-          <h3>2 · Launch</h3>
-          <p>
-            Kips simulates the launch on-chain and shows you exactly what will happen. Nothing is sent until you type
-            confirm and sign.
-          </p>
-        </div>
-        <div className="card">
-          <h3>3 · Earn</h3>
-          <p>
-            The agent's wallet receives the creator fee on every trade, on the bonding curve and after graduation.
-          </p>
-        </div>
-      </section>
-
-      <section className="about">
-        <h3>Good to know</h3>
-        <ul>
-          <li>The launch protocol can limit who may launch. Kips tells you if your wallet is not allowed yet.</li>
-          <li>Launching costs the protocol launch fee plus gas, paid in ETH on Robinhood Chain.</li>
-          <li>Agent tokens are high risk. Nothing here is financial advice.</li>
-        </ul>
-      </section>
+      <CtaBox />
     </>
+  );
+}
+
+export function CtaBox() {
+  return (
+    <section className="wrap section">
+      <div className="cta-box">
+        <AsciiField rings={4} />
+        <div className="cta-copy">
+          <p className="label">
+            <span className="accent">&gt;_</span> Ready when you are
+          </p>
+          <h2>
+            Your agent deserves
+            <br />
+            its own token.
+          </h2>
+          <p className="muted">
+            Give it a name and a purpose. KIPS handles the contract, the curve and the fee wiring on Robinhood Chain.
+          </p>
+          <a className="btn btn-solid" href="#/agent">
+            Start building <ArrowRight />
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }
