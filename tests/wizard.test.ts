@@ -12,6 +12,9 @@ describe("terminal question script", () => {
     expect(answerStep(step("skills"), "", ctx)).toEqual({ ok: true, value: "" });
     expect(answerStep(step("tax"), "skip", ctx)).toEqual({ ok: true, value: "1" });
     expect(answerStep(step("buyback"), "", ctx)).toEqual({ ok: true, value: "no" });
+    expect(answerStep(step("about"), "skip", ctx)).toEqual({ ok: true, value: "" });
+    expect(answerStep(step("category"), "", ctx)).toEqual({ ok: true, value: "other" });
+    expect(answerStep(step("symbol"), "", ctx).ok).toBe(false);
   });
   it("normalises answers", () => {
     expect(answerStep(step("symbol"), " $atlas ", ctx)).toEqual({ ok: true, value: "ATLAS" });

@@ -22,7 +22,8 @@ export function Explore() {
   const [cursor, setCursor] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [agentsOnly, setAgentsOnly] = useState(true);
+  // Every launch on the protocol is listed by default; "agents" narrows to KIPS profiles.
+  const [agentsOnly, setAgentsOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
   const started = useRef(false);

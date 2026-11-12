@@ -52,10 +52,16 @@ export const STEPS: Step[] = [
     parse: (raw) =>
       /\s/.test(raw) ? fail("A ticker cannot contain spaces.") : text("Ticker", LIMITS.symbol)(raw.replace(/^\$/, "").toUpperCase()),
   },
-  { key: "about", ask: () => "What does it do? Describe it in one message.", parse: (raw) => raw },
+  {
+    key: "about",
+    ask: () => "What does it do? Describe it in one message, or type skip.",
+    fallback: "",
+    parse: (raw) => raw,
+  },
   {
     key: "category",
-    ask: () => `Category? ${CATEGORIES.join(" / ")}`,
+    ask: () => `Category? ${CATEGORIES.join(" / ")} (or skip for other)`,
+    fallback: "other",
     parse: (raw) =>
       CATEGORIES.includes(raw.toLowerCase() as Category) ? raw.toLowerCase() : fail(`Pick one of: ${CATEGORIES.join(", ")}.`),
   },

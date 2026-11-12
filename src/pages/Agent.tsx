@@ -12,7 +12,10 @@ import { prepareLaunch, waitForLaunch, type PreparedLaunch } from "../lib/pons/w
 import { useWallet } from "../lib/wallet";
 
 const SLIPPAGE_BPS = 500n;
-const REQUIRED: (keyof Answers)[] = ["name", "symbol", "about", "category"];
+/** Needed before a launch can be simulated. */
+const REQUIRED: (keyof Answers)[] = ["name", "symbol"];
+/** Asked for in this order; after the required ones, each can be skipped. */
+const ASK: (keyof Answers)[] = ["name", "symbol", "about", "category"];
 
 type Who = "kips" | "you";
 type Tone = "plain" | "ok" | "err" | "dim";
@@ -24,10 +27,11 @@ interface Msg {
 }
 type Phase = "collect" | "simulated" | "busy" | "done";
 
+// Each example is a complete agent on its own, so one click gives a launchable blueprint.
 const EXAMPLES = [
-  "name: Atlas ticker: ATLAS category: trading x: @atlas website: atlas.xyz",
-  "agent Scout ticker SCOUT category research",
-  "about: Watches Robinhood Chain for new launches and posts alerts. skills: alerts, research",
+  "name: Atlas ticker: ATLAS category: trading about: Finds momentum on Robinhood Chain and trades it.",
+  "agent Scout ticker SCOUT category research about Watches new launches and posts alerts",
+  "name: Echo ticker: ECHO category: social about: Turns your posts into replies. x: @echo",
   "fee: 2 buy: 0.01",
 ];
 
@@ -56,6 +60,8 @@ function blockedReason(env: LaunchEnv, hasAccount: boolean): string | null {
 }
 
 const missingRequired = (a: Partial<Answers>) => REQUIRED.filter((k) => !a[k]);
+/** The next question still worth asking: required fields, then optional ones not yet answered or skipped. */
+const nextToAsk = (a: Partial<Answers>) => ASK.find((k) => (REQUIRED.includes(k) ? !a[k] : a[k] === undefined));
 
 /** Optional answers fall back to the wizard defaults at launch time. */
 function withDefaults(a: Partial<Answers>): Answers {
@@ -88,6 +94,8 @@ export function Agent() {
   useEffect(() => {
     if (greeted.current) return;
     greeted.current = true;
+    // Plain text before anything else is read as the agent's name.
+    pending.current = "name";
     say("kips", "Hi, I'm KIPS. Tell me about the agent you want to launch on Robinhood Chain: its name, ticker, what it does and a category. Use any of the formats on the left, or just start with a name.");
   }, [say]);
 
@@ -108,11 +116,12 @@ export function Agent() {
   const ctx = () => ({ maxTaxBps: env?.maxCreatorTaxBps ?? null });
 
   function nextQuestion(a: Partial<Answers>, wasReady = false, changed: (keyof Answers)[] = []) {
-    const miss = missingRequired(a);
-    if (miss.length > 0) {
-      const step = STEPS.find((s) => s.key === miss[0])!;
+    const next = nextToAsk(a);
+    if (next) {
+      const step = STEPS.find((s) => s.key === next)!;
       pending.current = step.key;
-      return say("kips", step.ask(ctx()));
+      const canLaunch = missingRequired(a).length === 0;
+      return say("kips", canLaunch ? `${step.ask(ctx())}\n(You can also type launch now.)` : step.ask(ctx()));
     }
     pending.current = null;
     if (wasReady) {
@@ -122,7 +131,7 @@ export function Agent() {
     }
     say(
       "kips",
-      "The blueprint is ready. You can still add an endpoint, logo, website, x, telegram, fee_wallet, fee, buyback or buy (e.g. fee: 2). Type launch when you're ready.",
+      "The blueprint is ready. Optional: endpoint, logo, website, x, telegram, fee_wallet, fee, buyback, buy (e.g. fee: 2). Type launch when you're ready.",
       "ok",
     );
   }
@@ -233,7 +242,7 @@ export function Agent() {
       answersRef.current = {};
       setPrepared(null);
       setPhase("collect");
-      pending.current = null;
+      pending.current = "name";
       return say("kips", "Fresh start. What's the agent called?");
     }
     if (cmd === "connect" || cmd.startsWith("connect ")) {
@@ -283,7 +292,7 @@ export function Agent() {
     }
 
     const fields = parseIntent(text);
-    const wasReady = missingRequired(answersRef.current).length === 0;
+    const wasReady = nextToAsk(answersRef.current) === undefined;
     if (Object.keys(fields).length > 0) {
       return nextQuestion(applyFields(fields), wasReady, Object.keys(fields) as (keyof Answers)[]);
     }
