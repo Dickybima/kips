@@ -42,21 +42,12 @@ export function Explore() {
 
   return (
     <>
-      <section className="hero">
-        <h1>Launch an AI agent with its own token.</h1>
-        <p>
-          Every kips agent is a Pons v2 token: a fixed supply sold on a bonding curve, graduating to a Uniswap v4 pool.
-          The agent's wallet earns the creator fees.
-        </p>
-        <a className="btn primary" href="#/launch">
-          Launch an agent
-        </a>
-      </section>
+      <h2 className="page-title">Explore</h2>
 
       <div className="bar">
         <div className="seg">
           <button className={agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(true)}>
-            kips agents
+            KIPS agents
           </button>
           <button className={!agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(false)}>
             All Pons v2 launches
@@ -87,7 +78,7 @@ export function Explore() {
       {!loading && !error && shown.length === 0 && (
         <p className="note">
           {agentsOnly
-            ? `No kips agents among the ${items.length} most recent Pons v2 launches scanned so far.`
+            ? `No KIPS agents among the ${items.length} most recent Pons v2 launches scanned so far.`
             : "No launches found in the scanned range."}
         </p>
       )}

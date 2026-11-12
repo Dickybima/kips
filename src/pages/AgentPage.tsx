@@ -124,7 +124,7 @@ export function AgentPage({ token }: { token: Address }) {
         </div>
 
         {!meta?.profile && (
-          <p className="note">This token was launched on Pons v2 without a kips agent profile.</p>
+          <p className="note">This token was launched on Pons v2 without a KIPS agent profile.</p>
         )}
         <p className="pre">{meta?.about || "No description."}</p>
 
@@ -193,7 +193,7 @@ export function AgentPage({ token }: { token: Address }) {
         </dl>
 
         {launched.pairToken !== NATIVE_QUOTE ? (
-          <p className="note">This curve is paired with a token other than ETH. kips only trades ETH pairs for now.</p>
+          <p className="note">This curve is paired with a token other than ETH. KIPS only trades ETH pairs for now.</p>
         ) : !curve ? (
           <p className="muted">Reading curve…</p>
         ) : !onCurve ? (

@@ -4,15 +4,17 @@ import { errMsg, shortAddr } from "./lib/format";
 import { useWallet } from "./lib/wallet";
 import { AgentPage } from "./pages/AgentPage";
 import { Explore } from "./pages/Explore";
-import { Launch } from "./pages/Launch";
+import { Home } from "./pages/Home";
+import { Kips } from "./pages/Kips";
 
-type Route = { page: "explore" } | { page: "launch" } | { page: "agent"; token: Address };
+type Route = { page: "home" } | { page: "explore" } | { page: "kips" } | { page: "agent"; token: Address };
 
 function parseRoute(hash: string): Route {
   const [, page, arg] = hash.replace(/^#/, "").split("/");
-  if (page === "launch") return { page: "launch" };
+  if (page === "explore") return { page: "explore" };
+  if (page === "kips" || page === "launch") return { page: "kips" };
   if (page === "agent" && arg && isAddress(arg)) return { page: "agent", token: arg };
-  return { page: "explore" };
+  return { page: "home" };
 }
 
 export function App() {
@@ -35,14 +37,17 @@ export function App() {
     <>
       <header className="top">
         <a className="brand" href="#/">
-          kips<span>agent launchpad</span>
+          KIPS
         </a>
         <nav>
-          <a href="#/" className={route.page === "explore" ? "on" : ""}>
+          <a href="#/" className={route.page === "home" ? "on" : ""}>
+            Home
+          </a>
+          <a href="#/explore" className={route.page === "explore" ? "on" : ""}>
             Explore
           </a>
-          <a href="#/launch" className={route.page === "launch" ? "on" : ""}>
-            Launch agent
+          <a href="#/kips" className={route.page === "kips" ? "on" : ""}>
+            Kips
           </a>
         </nav>
         <button className="btn" onClick={onConnect} disabled={!!account}>
@@ -52,12 +57,12 @@ export function App() {
       {walletError && <p className="note bad wrap">{walletError}</p>}
       <main className="wrap">
         {route.page === "explore" && <Explore />}
-        {route.page === "launch" && <Launch />}
+        {route.page === "home" && <Home />}
+        {route.page === "kips" && <Kips />}
         {route.page === "agent" && <AgentPage key={route.token} token={route.token} />}
       </main>
       <footer className="wrap foot">
-        kips launches agent tokens through Pons v2 on Robinhood Chain. Tokens are high risk; nothing here is financial
-        advice.
+        KIPS · built on Pons v2 on Robinhood Chain. Tokens are high risk; nothing here is financial advice.
       </footer>
     </>
   );
