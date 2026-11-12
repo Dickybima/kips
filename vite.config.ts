@@ -3,19 +3,16 @@ import react from "@vitejs/plugin-react";
 
 declare const process: { env: Record<string, string | undefined> };
 
+/** The public domain KIPS is shared under. */
+const CANONICAL_URL = "https://www.trykips.app";
+
 /**
- * Link previews need an absolute image URL. On Vercel the build knows its own
- * address: the production domain, else the stable branch URL, else this
- * deployment's URL. VITE_SITE_URL overrides all of them.
+ * Link previews need an absolute image URL on a domain anyone can open, so it
+ * is the public domain rather than a Vercel deployment URL (those can sit
+ * behind Vercel's login). VITE_SITE_URL overrides it, e.g. for another domain.
  */
 function siteUrl(): string {
-  const e = process.env;
-  if (e.VITE_SITE_URL) return e.VITE_SITE_URL.replace(/\/$/, "");
-  const host =
-    e.VERCEL_ENV === "production"
-      ? e.VERCEL_PROJECT_PRODUCTION_URL
-      : (e.VERCEL_BRANCH_URL ?? e.VERCEL_URL);
-  return host ? `https://${host}` : "";
+  return (process.env.VITE_SITE_URL || CANONICAL_URL).replace(/\/$/, "");
 }
 
 const linkPreview = (): Plugin => ({
