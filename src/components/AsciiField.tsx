@@ -6,8 +6,8 @@ interface Props {
   className?: string;
 }
 
-// Concentric rings drawn in glyphs. They are not rigid ellipses: each ring
-// wobbles, breathes and drifts, leans toward the pointer, and the inner rings
+// Concentric ellipses drawn in glyphs. Each ring breathes and drifts, the
+// field leans toward the pointer, glyphs near it light up, and the inner rings
 // glow in the accent colour. Thins toward the middle so text stays readable.
 const GLYPHS = ["@", "%", "#", "*", "·"];
 
@@ -93,23 +93,17 @@ export function AsciiField({ rings = 5, className = "" }: Props) {
         for (let i = 0; i < steps; i++) {
           if (gap(ring, i) < 0.42) continue;
           const a = (i / steps) * Math.PI * 2 + spin;
-          // A slow travelling wave bends each ring out of a perfect ellipse.
-          const wave = 1 + 0.035 * Math.sin(a * 3 + t * 0.8 + ring) + 0.02 * Math.sin(a * 5 - t * 0.5);
-          let x = cx + Math.cos(a) * rx * wave;
-          let y = cy + Math.sin(a) * ry * wave;
+          const x = cx + Math.cos(a) * rx;
+          const y = cy + Math.sin(a) * ry;
           if (x < -12 || x > w + 12 || y < -12 || y > h + 12) continue;
 
           let alpha = (0.12 + 0.5 * k01) * (0.7 + 0.3 * Math.sin(t * 1.3 + i * 0.7 + ring));
           let lit = 0;
           if (eased.on > 0.01) {
-            // Glyphs near the pointer part slightly and light up.
-            const dx = x - px;
-            const dy = y - py;
-            const d = Math.hypot(dx, dy);
-            if (d < reach && d > 0.5) {
+            // Glyphs near the pointer light up; the rings keep their shape.
+            const d = Math.hypot(x - px, y - py);
+            if (d < reach) {
               lit = (1 - d / reach) * eased.on;
-              x += (dx / d) * lit * 14;
-              y += (dy / d) * lit * 14;
               alpha += lit * 0.6;
             }
           }

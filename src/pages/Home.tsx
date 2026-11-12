@@ -16,10 +16,6 @@ export function Home() {
         </div>
         <AsciiField rings={6} />
         <div className="hero-copy">
-          <a className="pill rise" href="#/network" style={{ animationDelay: "0ms" }}>
-            <span className="pill-dot" /> Live on Robinhood Chain
-            {block !== null && <span className="pill-meta">#{block.toLocaleString("en-US")}</span>}
-          </a>
           <h1 className="rise" style={{ animationDelay: "90ms" }}>
             Give your agent
             <br />
