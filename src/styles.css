@@ -443,3 +443,26 @@ ul.note { padding-left: 28px; }
 @media (prefers-reduced-motion: reduce) {
   .aurora i, .shine, .rise { animation: none; }
 }
+
+/* ---------- agent logo upload ---------- */
+.attach {
+  width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); display: grid; place-items: center; cursor: pointer;
+}
+.attach:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.attach:disabled { opacity: 0.4; cursor: default; }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.bubble-img { display: block; width: 120px; height: 120px; object-fit: cover; border-radius: 10px; margin-bottom: 8px; border: 1px solid var(--line); }
+.lab-chat.dragging { outline: 2px dashed var(--accent); outline-offset: -10px; }
+.drop-hint {
+  position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--accent); font-size: 14px; letter-spacing: 0.08em;
+}
+.bp-logo { display: flex; align-items: center; gap: 12px; padding: 14px; border-bottom: 1px solid var(--line); }
+.bp-logo img, .bp-logo-ph { width: 52px; height: 52px; flex: none; border-radius: 10px; border: 1px solid var(--line); object-fit: cover; }
+.bp-logo-ph { display: grid; place-items: center; background: var(--bg-2); color: var(--muted); font-weight: 700; }
+.bp-logo strong { font-size: 13px; }
+.bp-logo .small { display: block; }
+.bp-logo .chip { flex: none; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

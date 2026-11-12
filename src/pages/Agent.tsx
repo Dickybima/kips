@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
-import { ArrowUp, Sparkle } from "../components/Icons";
+import { ArrowUp, ImageIcon, Sparkle } from "../components/Icons";
+import { LogoError, prepareLogo, uploadLogo } from "../lib/kips/image";
 import { Label } from "../components/Ui";
 import { validateLaunchForm } from "../lib/kips/agent";
 import { parseIntent } from "../lib/kips/intent";
@@ -24,6 +25,8 @@ interface Msg {
   text: string;
   tone?: Tone;
   href?: string;
+  /** An image shown in the bubble, e.g. the logo the user just picked. */
+  image?: string;
 }
 type Phase = "collect" | "simulated" | "busy" | "done";
 
@@ -87,8 +90,12 @@ export function Agent() {
   const field = useRef<HTMLTextAreaElement>(null);
   const greeted = useRef(false);
 
-  const say = useCallback((who: Who, text: string, tone: Tone = "plain", href?: string) => {
-    setMsgs((m) => [...m, { who, text, tone, href }]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  const say = useCallback((who: Who, text: string, tone: Tone = "plain", href?: string, image?: string) => {
+    setMsgs((m) => [...m, { who, text, tone, href, image }]);
   }, []);
 
   useEffect(() => {
@@ -305,6 +312,42 @@ export function Agent() {
     say("kips", "I didn't find any agent details in that. Try ticker: ATLAS, or type help.", "dim");
   }
 
+  /** Crops, uploads and sets a logo picked from disk, dropped or pasted. */
+  async function addLogo(file: File) {
+    if (busy || uploading || phase === "busy" || phase === "done") return;
+    let prepared;
+    try {
+      prepared = await prepareLogo(file);
+    } catch (e) {
+      return say("kips", e instanceof LogoError ? e.message : errMsg(e), "err");
+    }
+    say("you", file.name || "logo", "plain", undefined, prepared.preview);
+    setUploading(true);
+    say("kips", "Uploading the logo…", "dim");
+    try {
+      const url = await uploadLogo(prepared.blob);
+      // A new logo invalidates a launch that was already simulated.
+      if (phase === "simulated") {
+        setPrepared(null);
+        setPhase("collect");
+      }
+      const wasReady = nextToAsk(answersRef.current) === undefined;
+      const next = applyFields({ logo: url });
+      if (next.logo !== url) return;
+      say("kips", "Logo set. It will be stored with the token on-chain.", "ok");
+      if (!wasReady) nextQuestion(next);
+    } catch (e) {
+      say("kips", e instanceof LogoError ? e.message : errMsg(e), "err");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function pickFrom(files: FileList | null | undefined) {
+    const file = files && Array.from(files).find((f) => f.type.startsWith("image/"));
+    if (file) void addLogo(file);
+  }
+
   function submit(text = input) {
     if (busy || !text.trim()) return;
     setInput("");
@@ -345,16 +388,37 @@ export function Agent() {
           ))}
         </div>
         <p className="muted small">
+          Add a logo with the <b>image</b> button, or drop or paste an image into the chat.
+        </p>
+        <p className="muted small">
           Commands: <b>launch</b>, <b>confirm</b>, <b>cancel</b>, <b>skip</b>, <b>help</b>. Launching sends a real
           transaction on Robinhood Chain: you pay the launch fee and gas shown in your wallet.
         </p>
       </aside>
 
-      <section className="lab-chat">
+      <section
+        className={dragging ? "lab-chat dragging" : "lab-chat"}
+        onDragOver={(e) => {
+          if (Array.from(e.dataTransfer.items).some((i) => i.type.startsWith("image/"))) {
+            e.preventDefault();
+            setDragging(true);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target) setDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          pickFrom(e.dataTransfer.files);
+        }}
+      >
+        {dragging && <div className="drop-hint">Drop to use as the agent's logo</div>}
         <div className="lab-log" ref={log} aria-live="polite">
           {msgs.map((m, i) => (
             <div key={i} className={`bubble ${m.who} ${m.tone ?? "plain"}`}>
               {m.who === "kips" && <span className="bubble-who">kips</span>}
+              {m.image && <img className="bubble-img" src={m.image} alt="" />}
               {m.href ? <a href={m.href}>{m.text}</a> : <span className="bubble-text">{m.text}</span>}
             </div>
           ))}
@@ -368,6 +432,16 @@ export function Agent() {
           }}
         >
           <Sparkle className="accent" />
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            hidden
+            onChange={(e) => {
+              pickFrom(e.target.files);
+              e.target.value = "";
+            }}
+          />
           <textarea
             ref={field}
             rows={1}
@@ -380,10 +454,27 @@ export function Agent() {
                 submit((e.target as HTMLTextAreaElement).value);
               }
             }}
+            onPaste={(e) => {
+              const files = e.clipboardData.files;
+              if (files.length && Array.from(files).some((f) => f.type.startsWith("image/"))) {
+                e.preventDefault();
+                pickFrom(files);
+              }
+            }}
             disabled={busy}
             aria-label="Message KIPS"
             autoFocus
           />
+          <button
+            type="button"
+            className="attach"
+            onClick={() => fileInput.current?.click()}
+            disabled={busy || uploading || phase === "busy" || phase === "done"}
+            aria-label="Upload a logo"
+            title="Upload a logo"
+          >
+            {uploading ? <span className="spin" /> : <ImageIcon />}
+          </button>
           <button className="send" disabled={busy || !input.trim()} aria-label="Send">
             <ArrowUp />
           </button>
@@ -397,6 +488,25 @@ export function Agent() {
             <i />
             <i className={ready ? "on" : ""} />
             <span>blueprint.json</span>
+          </div>
+          <div className="bp-logo">
+            {answers.logo ? (
+              <img src={answers.logo} alt="Agent logo" />
+            ) : (
+              <span className="bp-logo-ph">{(answers.symbol ?? "?").slice(0, 2).toUpperCase()}</span>
+            )}
+            <div className="grow">
+              <strong className="ellipsis">{answers.name ?? "Unnamed agent"}</strong>
+              <span className="muted small">{answers.symbol ? `$${answers.symbol}` : "no ticker yet"}</span>
+            </div>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => fileInput.current?.click()}
+              disabled={busy || uploading || phase === "busy" || phase === "done"}
+            >
+              {uploading ? "Uploading…" : answers.logo ? "Change logo" : "Upload logo"}
+            </button>
           </div>
           {Object.keys(answers).length === 0 ? (
             <p className="bp-empty muted">Your agent's blueprint will take shape here.</p>

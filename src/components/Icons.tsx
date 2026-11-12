@@ -80,6 +80,13 @@ export const Sparkle = (p: SVGProps<SVGSVGElement>) => (
     <path d="M19 3v4M17 5h4" />
   </svg>
 );
+export const ImageIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+    <circle cx="9" cy="10" r="1.8" />
+    <path d="m21 16-5.2-5.2a1.5 1.5 0 0 0-2.1 0L5 19.5" />
+  </svg>
+);
 export const XLogo = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <path d="M4 4l16 16M20 4 4 20" />

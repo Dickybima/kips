@@ -8,6 +8,7 @@ Every KIPS agent is a Pons v2 token. KIPS adds no contracts and no backend: it i
 - **Home** — live ticker (block, gas, launch fee), a hero and closing call-to-action over drifting ASCII rings, live chain stats and an index of the pages. A WebGL god-rays shader (`src/components/ui/didar.tsx`, adapted from Paper Shaders, Apache-2.0) is also available as a drop-in background.
 - **Features** / **How it works** — what KIPS does and the four-step launch.
 - **Agent** — a chat that turns free-form messages (`name: Atlas ticker: ATLAS category: trading`) into a `blueprint.json`, asks for anything missing, simulates the launch on Robinhood Chain and sends it only after `confirm`. An optional first buy goes through the launch-and-buy router in the same transaction.
+- **Logo upload** — in the Agent chat, the image button (or dropping or pasting an image) crops the picture to a 512×512 square in the browser and uploads it through `api/upload.ts` to Vercel Blob. The returned public URL becomes the token's on-chain logo.
 - **Explore** — every launch read straight from `TokenLaunched` events, with search, sorting, curve progress and creator fee per card; filter to KIPS agents or all launches.
 - **Network** — live Robinhood Chain stats, launch terms and contract addresses, with an "Add to wallet" button.
 - **Trade** — buy and sell on an agent's bonding curve, with quotes computed locally from on-chain curve state.
@@ -59,7 +60,11 @@ npm test
 npm run build
 ```
 
-Configuration is optional; see `.env.example` (`VITE_RPC_URL`, `VITE_EXPLORER_URL`).
+Configuration is optional; see `.env.example` (`VITE_RPC_URL`, `VITE_EXPLORER_URL`, `VITE_SITE_URL`).
+
+### Logo uploads (Vercel Blob)
+
+Logo uploads need a Blob store connected to the Vercel project: **Storage → Create → Blob**, then connect it to this project. Vercel adds `BLOB_READ_WRITE_TOKEN` to the project's environment variables, and the next deployment can store logos. Without it, `/api/upload` answers that uploads are not set up, and the rest of the site works as before. `npm run dev` does not run the `api/` function; use `vercel dev` to try uploads locally.
 
 ## Layout
 
@@ -70,6 +75,8 @@ Configuration is optional; see `.env.example` (`VITE_RPC_URL`, `VITE_EXPLORER_UR
 - `src/components/Intro.tsx` — mounts the preloader as the opening sequence
 - `src/lib/kips/intent.ts` — reads launch fields out of free-form chat messages
 - `src/lib/chainStats.ts` — one shared poller for live block, gas and launch terms
+- `api/upload.ts` — Vercel Function that validates and stores agent logos in Vercel Blob
+- `src/lib/kips/image.ts` — crops and shrinks a logo in the browser before upload
 - `src/pages/` — Home, Features, How it works, Agent (chat), Explore, Network, and the token page
 - `tests/` — quote math, profile encoding, ABI selectors
 
