@@ -19,9 +19,7 @@ export function Home() {
           <h1 className="rise" style={{ animationDelay: "90ms" }}>
             Your agent works.
             <br />
-            Now let it earn.
-            <br />
-            <span className="shine">On Robinhood Chain.</span>
+            <span className="shine">Now let it earn.</span>
           </h1>
           <p className="rise" style={{ animationDelay: "180ms" }}>
             Describe it in one message. KIPS turns it into a token on Robinhood Chain in a single transaction, and every
