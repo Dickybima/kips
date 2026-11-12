@@ -67,3 +67,46 @@ describe("scanLaunches", () => {
     expect(calls.length).toBeLessThanOrEqual(4);
   });
 });
+
+const { scanAgents } = await import("../src/lib/pons/read");
+
+describe("scanAgents", () => {
+  beforeEach(() => {
+    calls = [];
+    gap = 1000n;
+  });
+
+  // Every launch whose address starts with 0xa is a KIPS agent; 0xb tokens are plain launches.
+  const readMeta = async (token: `0x${string}`) => ({
+    token,
+    name: token,
+    symbol: "T",
+    logo: "",
+    about: "",
+    profile: token.startsWith("0xa") ? { category: "other" as const, skills: [], endpoint: "" } : null,
+    socials: { twitter: "", telegram: "", discord: "", website: "", farcaster: "" },
+  });
+
+  it("keeps only tokens with a KIPS profile", async () => {
+    const { agents } = await scanAgents(HEAD, { want: 5, floor: DEPLOY, readMeta });
+    expect(agents.length).toBeGreaterThanOrEqual(5);
+    expect(agents.every((a) => a.meta.token.startsWith("0xa"))).toBe(true);
+  });
+
+  it("never looks below the KIPS start block", async () => {
+    const floor = HEAD - 50_000n;
+    const { agents, next } = await scanAgents(HEAD, { want: 1000, floor, readMeta });
+    expect(next).toBeNull();
+    expect(agents.length).toBe(Number((HEAD - floor) / gap) + 1);
+    expect(calls.every(([from]) => from >= floor)).toBe(true);
+  });
+
+  it("stops after checking maxLaunches when agents are rare", async () => {
+    const none = async (token: `0x${string}`) => ({ ...(await readMeta(token)), profile: null });
+    const { agents, next, checked } = await scanAgents(HEAD, { want: 5, floor: DEPLOY, readMeta: none, maxLaunches: 100 });
+    expect(agents).toHaveLength(0);
+    expect(checked).toBeGreaterThanOrEqual(100);
+    expect(checked).toBeLessThan(200);
+    expect(next).not.toBeNull();
+  });
+});

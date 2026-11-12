@@ -28,6 +28,12 @@ export const PONS = {
 /** First block with factory code; log scans never go below this. */
 export const FACTORY_DEPLOY_BLOCK = 57_412_596n;
 
+/**
+ * KIPS went live after this block, so no KIPS agent can be older. Explore only
+ * scans launches from here on instead of the protocol's whole history.
+ */
+export const KIPS_START_BLOCK = 112_000_000n;
+
 /** Pons uses the zero address as the pair token for native ETH curves. */
 export const NATIVE_QUOTE: Address = zeroAddress;
 

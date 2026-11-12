@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isAddress } from "viem";
 import { ArrowRight, Globe, Search, XLogo } from "../components/Icons";
 import { Corners, CopyButton, Leader, PageHead } from "../components/Ui";
 import { safeUrl } from "../lib/kips/agent";
 import { errMsg, fmt, pct, shortAddr } from "../lib/format";
 import { publicClient } from "../lib/pons/chain";
 import { graduationProgressBps } from "../lib/pons/quote";
-import { readCardStats, readTokenMeta, scanLaunches, type CardStats, type TokenMeta } from "../lib/pons/read";
+import { readCardStats, scanAgents, type CardStats, type TokenMeta } from "../lib/pons/read";
 
 interface Item {
   meta: TokenMeta;
@@ -21,26 +20,24 @@ export function Explore() {
   const [items, setItems] = useState<Item[]>([]);
   const [cursor, setCursor] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const [checked, setChecked] = useState(0);
   const [error, setError] = useState("");
-  // Every launch on the protocol is listed by default; "agents" narrows to KIPS profiles.
-  const [agentsOnly, setAgentsOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
   const started = useRef(false);
+  const checkedBefore = useRef(0);
 
+  // Only tokens launched through KIPS are listed: launches since KIPS went live
+  // whose on-chain description carries a KIPS agent profile.
   const load = useCallback(async (from: bigint | undefined) => {
     setLoading(true);
     setError("");
     try {
       const to = from ?? (await publicClient.getBlockNumber());
-      const { logs, next } = await scanLaunches(to);
-      const metas = await Promise.all(
-        logs.map(async (l): Promise<Item | null> => {
-          const meta = await readTokenMeta(l.token).catch(() => null);
-          return meta ? { meta, curve: l.curve, block: l.blockNumber, stats: null } : null;
-        }),
-      );
-      const fresh = metas.filter((m): m is Item => m !== null);
+      const base = checkedBefore.current;
+      const { agents, next, checked: n } = await scanAgents(to, { onProgress: (c) => setChecked(base + c) });
+      checkedBefore.current = base + n;
+      const fresh: Item[] = agents.map((a) => ({ ...a, stats: null }));
       setItems((prev) => [...prev, ...fresh]);
       setCursor(next);
       // Progress and fees fill in after the cards are on screen.
@@ -65,7 +62,7 @@ export function Explore() {
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = agentsOnly ? items.filter((i) => i.meta.profile) : items;
+    let list = items;
     if (q) {
       list = list.filter(
         (i) =>
@@ -79,22 +76,22 @@ export function Explore() {
     else if (sort === "name") sorted.sort((a, b) => a.meta.name.localeCompare(b.meta.name));
     else sorted.sort((a, b) => (a.block > b.block ? -1 : a.block < b.block ? 1 : 0));
     return sorted;
-  }, [items, agentsOnly, query, sort]);
+  }, [items, query, sort]);
 
   const q = query.trim();
 
   return (
     <section className="wrap section">
-      <PageHead n="04" label="Explore" title="Every agent launched on Robinhood Chain.">
-        Tokens appear here straight from the chain, newest first. Agents launched through KIPS carry their profile with
-        them.
+      <PageHead n="04" label="Explore" title="Every agent launched with KIPS.">
+        Only tokens created through KIPS appear here, straight from Robinhood Chain, the moment they go live.
       </PageHead>
 
       <form
         className="filters"
         onSubmit={(e) => {
           e.preventDefault();
-          if (isAddress(q)) location.hash = `#/agent/${q}`;
+          const hit = items.find((i) => i.meta.token.toLowerCase() === q.toLowerCase());
+          if (hit) location.hash = `#/agent/${hit.meta.token}`;
         }}
       >
         <label className="grep">
@@ -110,23 +107,10 @@ export function Explore() {
 
       <div className="seg-row">
         <span className="dot-label">
-          <span className="accent">●</span> {agentsOnly ? "KIPS agents" : "All launches"}
+          <span className="accent">●</span> KIPS agents{items.length > 0 ? ` · ${items.length}` : ""}
         </span>
-        <div className="seg">
-          <button className={agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(true)}>
-            agents
-          </button>
-          <button className={!agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(false)}>
-            all
-          </button>
-        </div>
       </div>
 
-      {isAddress(q) && (
-        <p className="muted small">
-          Press Enter to open <code>{shortAddr(q)}</code> directly.
-        </p>
-      )}
       {error && <p className="note bad">Could not read launches from Robinhood Chain: {error}</p>}
 
       {shown.length > 0 && (
@@ -145,38 +129,31 @@ export function Explore() {
   \\_________/`}</pre>
           <p className="muted">
             {q
-              ? "Nothing matches that search in what has been scanned so far."
-              : agentsOnly
-                ? `No KIPS agents among the ${items.length} most recent launches yet. Be the first.`
-                : "No launches found in the scanned range."}
+              ? "No KIPS agent matches that search."
+              : cursor === null
+                ? "No agents have been launched through KIPS yet. The first one will appear here."
+                : "No KIPS agents in the launches checked so far."}
           </p>
-          {!q && agentsOnly && (
-            <div className="cta-row">
-              <a className="btn btn-solid" href="#/agent">
-                Launch the first one <ArrowRight />
-              </a>
-              {items.length > 0 && (
-                <button className="btn btn-ghost" onClick={() => setAgentsOnly(false)}>
-                  Show all launches
-                </button>
-              )}
-            </div>
+          {!q && (
+            <a className="btn btn-solid" href="#/agent">
+              Launch the first one <ArrowRight />
+            </a>
           )}
         </div>
       )}
 
       <div className="center">
         {loading ? (
-          <span className="muted">scanning launches…</span>
+          <span className="muted">checking launches for KIPS agents… {checked > 0 ? `(${checked})` : ""}</span>
         ) : cursor === null ? (
-          <span className="muted">// scanned back to the first launch</span>
-        ) : (
+          <span className="muted">// every KIPS agent is listed</span>
+        ) : cursor !== undefined ? (
           <button className="btn btn-ghost" onClick={() => void load(cursor)}>
-            {error ? "Retry" : "Scan older launches"}
+            {error ? "Retry" : "Load older agents"}
           </button>
-        )}
+        ) : null}
       </div>
-      <p className="center muted small">// every token launched on Robinhood Chain through this launch protocol</p>
+      <p className="center muted small">// every token launched through KIPS on Robinhood Chain</p>
     </section>
   );
 }

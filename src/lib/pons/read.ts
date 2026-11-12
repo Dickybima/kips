@@ -1,6 +1,6 @@
 import type { Address } from "viem";
 import { curveAbi, factoryAbi, tokenAbi } from "./abi";
-import { FACTORY_DEPLOY_BLOCK, NATIVE_QUOTE, PONS, publicClient } from "./chain";
+import { FACTORY_DEPLOY_BLOCK, KIPS_START_BLOCK, NATIVE_QUOTE, PONS, publicClient } from "./chain";
 import { decodeDescription, type AgentProfile } from "../kips/agent";
 
 const factory = { address: PONS.factory, abi: factoryAbi } as const;
@@ -156,8 +156,9 @@ const MIN_CHUNK = 5_000n;
  */
 export async function scanLaunches(
   toBlock: bigint,
-  opts: { want?: number; maxRequests?: number; chunk?: bigint } = {},
+  opts: { want?: number; maxRequests?: number; chunk?: bigint; floor?: bigint } = {},
 ): Promise<{ logs: LaunchLog[]; next: bigint | null }> {
+  const FLOOR = opts.floor ?? FACTORY_DEPLOY_BLOCK;
   const want = opts.want ?? 24;
   // Robinhood Chain blocks are fast and launches are frequent; the window
   // adapts to how dense the launches turn out to be.
@@ -166,8 +167,8 @@ export async function scanLaunches(
   let to = toBlock;
   const out: LaunchLog[] = [];
 
-  while (to >= FACTORY_DEPLOY_BLOCK && out.length < want && requests > 0) {
-    const from = to - chunk + 1n > FACTORY_DEPLOY_BLOCK ? to - chunk + 1n : FACTORY_DEPLOY_BLOCK;
+  while (to >= FLOOR && out.length < want && requests > 0) {
+    const from = to - chunk + 1n > FLOOR ? to - chunk + 1n : FLOOR;
     let logs;
     try {
       logs = await publicClient.getContractEvents({
@@ -196,9 +197,52 @@ export async function scanLaunches(
     // last kept block stays, and the next page resumes just below it.
     const edge = out[want - 1].blockNumber;
     const kept = out.filter((l) => l.blockNumber >= edge);
-    return { logs: kept, next: edge - 1n >= FACTORY_DEPLOY_BLOCK ? edge - 1n : null };
+    return { logs: kept, next: edge - 1n >= FLOOR ? edge - 1n : null };
   }
-  return { logs: out, next: to >= FACTORY_DEPLOY_BLOCK ? to : null };
+  return { logs: out, next: to >= FLOOR ? to : null };
+}
+
+export interface AgentLaunch {
+  meta: TokenMeta;
+  curve: Address;
+  block: bigint;
+}
+
+/**
+ * Finds tokens launched through KIPS: Pons launches since KIPS went live whose
+ * on-chain description carries the KIPS profile. Walks back page by page until
+ * `want` agents are found, `maxLaunches` launches were checked, or the start
+ * block is reached. `next` is null once nothing older remains.
+ */
+export async function scanAgents(
+  toBlock: bigint,
+  opts: {
+    want?: number;
+    maxLaunches?: number;
+    floor?: bigint;
+    readMeta?: (token: Address) => Promise<TokenMeta>;
+    onProgress?: (checked: number) => void;
+  } = {},
+): Promise<{ agents: AgentLaunch[]; next: bigint | null; checked: number }> {
+  const want = opts.want ?? 12;
+  const maxLaunches = opts.maxLaunches ?? 240;
+  const floor = opts.floor ?? KIPS_START_BLOCK;
+  const readMeta = opts.readMeta ?? readTokenMeta;
+  const agents: AgentLaunch[] = [];
+  let cursor: bigint | null = toBlock;
+  let checked = 0;
+  while (cursor !== null && agents.length < want && checked < maxLaunches) {
+    const { logs, next } = await scanLaunches(cursor, { want: 40, floor });
+    const metas = await Promise.all(logs.map((l) => readMeta(l.token).catch(() => null)));
+    logs.forEach((l, i) => {
+      const meta = metas[i];
+      if (meta?.profile) agents.push({ meta, curve: l.curve, block: l.blockNumber });
+    });
+    checked += logs.length;
+    opts.onProgress?.(checked);
+    cursor = next;
+  }
+  return { agents, next: cursor, checked };
 }
 
 export interface CardStats {
