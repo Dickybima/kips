@@ -147,30 +147,22 @@ p { margin: 0; }
 .prompt-line { margin: 14px 0 36px; color: var(--muted); font-size: 15px; }
 .sub-h { font-size: 20px; margin: 56px 0 18px; }
 
-/* ---------- shader backgrounds ---------- */
-.shader { position: absolute; inset: 0; pointer-events: none; }
-/* The shader is always dark, so text over it uses the dark palette in both themes. */
-.on-shader {
-  --fg: #f4f1ea; --muted: #c9c2b5; --dim: #8f877a; --line: rgba(255, 255, 255, 0.16);
-  --solid: #f4f1ea; --solid-ink: #0b0c0d; --bg: #0b0c0d; color: var(--fg); background: #140a00;
-}
-.on-shader h1, .on-shader h2, .on-shader p { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 2px 22px rgba(0, 0, 0, 0.85); }
+/* ---------- ascii backgrounds ---------- */
+.ascii { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--fg); font-family: "JetBrains Mono", monospace; pointer-events: none; }
 
 /* ---------- hero ---------- */
-.hero { position: relative; min-height: calc(100svh - 84px); display: grid; align-items: center; overflow: hidden; border-bottom: 1px dashed var(--line); }
-/* Copy sits on the left, over a soft shade, so the rays stay visible on the right. */
-.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 4, 0, 0.82) 0%, rgba(8, 4, 0, 0.6) 32%, transparent 62%); pointer-events: none; }
-.hero-copy { position: relative; z-index: 1; width: 100%; max-width: 1104px; margin: 0 auto; padding: 40px 16px; text-align: left; }
-.hero-copy h1 { font-size: clamp(30px, 4.6vw, 48px); max-width: 620px; }
-.hero-copy p { color: var(--muted); margin: 26px 0 30px; max-width: 480px; line-height: 1.75; }
-.hero .cta-row { justify-content: flex-start; }
+.hero { position: relative; min-height: calc(100svh - 84px); display: grid; place-items: center; overflow: hidden; border-bottom: 1px dashed var(--line); }
+.hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 34% 30% at 50% 50%, var(--bg) 40%, transparent 100%); pointer-events: none; }
+.hero-copy { position: relative; z-index: 1; text-align: center; max-width: 720px; padding: 40px 16px; }
+.hero-copy h1 { font-size: clamp(30px, 4.6vw, 48px); }
+.hero-copy p { color: var(--muted); margin: 26px auto 30px; max-width: 460px; line-height: 1.75; }
 .cta-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-.hero-foot { position: absolute; bottom: 18px; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); z-index: 1; }
+.hero-foot { position: absolute; bottom: 18px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); z-index: 1; }
 .hero-foot.left { left: 24px; }
 .hero-foot.right { right: 24px; }
 @media (max-width: 640px) {
   .hero-foot.right { display: none; }
-  .hero::after { background: linear-gradient(90deg, rgba(8, 4, 0, 0.8) 0%, rgba(8, 4, 0, 0.55) 70%, rgba(8, 4, 0, 0.3) 100%); }
+  .hero::after { background: radial-gradient(ellipse 75% 34% at 50% 50%, var(--bg) 55%, transparent 100%); }
 }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px dashed var(--line); }
@@ -224,7 +216,7 @@ p { margin: 0; }
 
 /* ---------- call to action box ---------- */
 .cta-box { position: relative; border: 1px solid var(--line); min-height: 480px; display: grid; place-items: center; overflow: hidden; }
-.cta-box::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 40% 42% at 50% 50%, rgba(8, 4, 0, 0.72), transparent 100%); pointer-events: none; }
+.cta-box::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse 30% 34% at 50% 50%, var(--bg) 45%, transparent 100%); pointer-events: none; }
 .cta-copy { position: relative; z-index: 1; text-align: center; max-width: 440px; padding: 40px 16px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .cta-copy .label { margin: 0; }
 
