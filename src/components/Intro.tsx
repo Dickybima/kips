@@ -33,7 +33,7 @@ export function Intro() {
       <StardustStagePreloader
         className="intro-stage"
         word="KIPS"
-        caption="KIPS in Robinhood Chain"
+        caption="KIPS on Robinhood Chain"
         height="100dvh"
         onComplete={finish}
       />
