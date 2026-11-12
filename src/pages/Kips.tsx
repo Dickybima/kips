@@ -45,11 +45,11 @@ const HELP = [
 const FIELD_ALIASES: Record<string, keyof Answers> = { ticker: "symbol", description: "about", fee: "tax", x: "twitter" };
 
 function blockedReason(env: LaunchEnv, hasAccount: boolean): string | null {
-  if (!env.launchEnabled) return "Pons v2 launches are currently paused by the protocol.";
-  if (!env.nativeApproved) return "Pons v2 is not accepting ETH-paired launches right now.";
-  if (env.configs.length === 0) return "Pons v2 has no open launch configuration.";
+  if (!env.launchEnabled) return "Launches are currently paused by the protocol.";
+  if (!env.nativeApproved) return "The protocol is not accepting ETH-paired launches right now.";
+  if (env.configs.length === 0) return "The protocol has no open launch configuration.";
   if (hasAccount && env.canLaunch === false) {
-    return "Pons v2 is not open to this wallet yet: launches are limited to allowlisted launchers.";
+    return "Launching is not open to this wallet yet: it is limited to allowlisted launchers.";
   }
   return null;
 }
@@ -75,7 +75,7 @@ export function Kips() {
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
-    say("dim", "KIPS — launch an agent on Pons v2 · Robinhood Chain");
+    say("dim", "KIPS — launch an agent on Robinhood Chain");
     say("dim", "Answer the questions to launch. Type help for commands.");
     ask();
   }, [say, ask]);
@@ -87,11 +87,11 @@ export function Kips() {
         if (!live) return;
         const first = env.current === null;
         env.current = e;
-        if (first) say("dim", `Pons v2 online · launch fee ${fmt(e.launchFee)} ETH`);
+        if (first) say("dim", `Robinhood Chain online · launch fee ${fmt(e.launchFee)} ETH`);
         const reason = blockedReason(e, !!account);
         if (reason) say("err", reason);
       },
-      (e) => live && say("err", `Could not read Pons v2: ${errMsg(e)}`),
+      (e) => live && say("err", `Could not read the chain: ${errMsg(e)}`),
     );
     return () => {
       live = false;
@@ -138,7 +138,7 @@ export function Kips() {
     const a = s.answers as Answers;
     const e = env.current;
     if (!account) return say("err", "Connect a wallet first: type connect.");
-    if (!e) return say("err", "Still reading Pons v2. Try again in a moment.");
+    if (!e) return say("err", "Still reading the chain. Try again in a moment.");
     const reason = blockedReason(e, true);
     if (reason) return say("err", reason);
     const form = toLaunchForm(a);
@@ -146,7 +146,7 @@ export function Kips() {
     if (problems.length > 0) return problems.forEach((p) => say("err", p));
 
     s.phase = "busy";
-    say("dim", "Simulating against Pons v2…");
+    say("dim", "Simulating on Robinhood Chain…");
     try {
       const prepared = await prepareLaunch({
         form,

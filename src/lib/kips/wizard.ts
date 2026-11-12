@@ -97,7 +97,7 @@ export const STEPS: Step[] = [
   },
   {
     key: "buyback",
-    ask: () => "Enable Pons buyback? Part of the trading fees buys back and locks the token. yes / no (enter for no)",
+    ask: () => "Enable buyback? Part of the trading fees buys back and locks the token. yes / no (enter for no)",
     fallback: "no",
     parse: (raw) => {
       const v = raw.toLowerCase();

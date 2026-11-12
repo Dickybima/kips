@@ -77,7 +77,7 @@ export function AgentPage({ token }: { token: Address }) {
   if (launched === null) {
     return (
       <p className="note bad">
-        <code>{token}</code> is not a Pons v2 launch.
+        <code>{token}</code> is not a token KIPS can open.
       </p>
     );
   }
@@ -119,12 +119,12 @@ export function AgentPage({ token }: { token: Address }) {
           {meta?.profile ? (
             <span className="tag accent">{meta.profile.category}</span>
           ) : (
-            <span className="tag">Pons v2 token</span>
+            <span className="tag">Token</span>
           )}
         </div>
 
         {!meta?.profile && (
-          <p className="note">This token was launched on Pons v2 without a KIPS agent profile.</p>
+          <p className="note">This token was launched without a KIPS agent profile.</p>
         )}
         <p className="pre">{meta?.about || "No description."}</p>
 

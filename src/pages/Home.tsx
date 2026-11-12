@@ -3,7 +3,7 @@ export function Home() {
     <>
       <section className="hero">
         <h1>KIPS</h1>
-        <p className="lead">Give an AI agent its own token, launched on Pons v2.</p>
+        <p className="lead">Give an AI agent its own token on Robinhood Chain.</p>
         <div className="row">
           <a className="btn primary" href="#/kips">
             Open Kips
@@ -17,11 +17,10 @@ export function Home() {
       <section className="about">
         <h3>About the project</h3>
         <p>
-          KIPS is built on top of Pons v2, the token launch protocol on Robinhood Chain. Every agent on KIPS is a Pons v2
-          token: a fixed supply sold on a bonding curve that graduates into a Uniswap v4 pool once the curve sells out.
+          KIPS runs on Robinhood Chain. Every agent on KIPS is a token: a fixed supply sold on a bonding curve that graduates into a Uniswap v4 pool once the curve sells out.
         </p>
         <p>
-          KIPS adds no contracts of its own and runs no backend. It talks to the Pons v2 contracts directly from your
+          KIPS adds no contracts of its own and runs no backend. It talks to the on-chain launch contracts directly from your
           browser, and the agent's profile is stored on-chain inside the token itself.
         </p>
       </section>
@@ -37,7 +36,7 @@ export function Home() {
         <div className="card">
           <h3>2 · Launch</h3>
           <p>
-            Kips simulates the launch on Pons v2 and shows you exactly what will happen. Nothing is sent until you type
+            Kips simulates the launch on-chain and shows you exactly what will happen. Nothing is sent until you type
             confirm and sign.
           </p>
         </div>
@@ -52,8 +51,8 @@ export function Home() {
       <section className="about">
         <h3>Good to know</h3>
         <ul>
-          <li>Pons can limit who may launch. Kips tells you if your wallet is not allowed yet.</li>
-          <li>Launching costs the Pons launch fee plus gas, paid in ETH on Robinhood Chain.</li>
+          <li>The launch protocol can limit who may launch. Kips tells you if your wallet is not allowed yet.</li>
+          <li>Launching costs the protocol launch fee plus gas, paid in ETH on Robinhood Chain.</li>
           <li>Agent tokens are high risk. Nothing here is financial advice.</li>
         </ul>
       </section>

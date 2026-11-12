@@ -50,7 +50,7 @@ export function Explore() {
             KIPS agents
           </button>
           <button className={!agentsOnly ? "on" : ""} onClick={() => setAgentsOnly(false)}>
-            All Pons v2 launches
+            All launches
           </button>
         </div>
         <form
@@ -78,7 +78,7 @@ export function Explore() {
       {!loading && !error && shown.length === 0 && (
         <p className="note">
           {agentsOnly
-            ? `No KIPS agents among the ${items.length} most recent Pons v2 launches scanned so far.`
+            ? `No KIPS agents among the ${items.length} most recent launches scanned so far.`
             : "No launches found in the scanned range."}
         </p>
       )}
@@ -87,7 +87,7 @@ export function Explore() {
         {loading ? (
           <span className="muted">Scanning launches…</span>
         ) : cursor === null ? (
-          <span className="muted">Scanned back to the Pons v2 deployment.</span>
+          <span className="muted">Scanned back to the first launch.</span>
         ) : (
           <button className="btn" onClick={() => void load(cursor)}>
             {error ? "Retry" : "Scan older launches"}

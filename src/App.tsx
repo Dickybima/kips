@@ -55,7 +55,7 @@ export function App() {
         {route.page === "agent" && <AgentPage key={route.token} token={route.token} />}
       </main>
       <footer className="wrap foot">
-        KIPS · built on Pons v2 on Robinhood Chain. Tokens are high risk; nothing here is financial advice.
+        KIPS in Robinhood Chain. Tokens are high risk; nothing here is financial advice.
       </footer>
     </>
   );
