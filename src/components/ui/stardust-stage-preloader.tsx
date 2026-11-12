@@ -63,6 +63,11 @@ export interface StardustStagePreloaderProps {
   height?: string
   /** Fired once, after the gate has lifted. */
   onComplete?: () => void
+  /**
+   * Stay on the finished stage until the viewer clicks (or presses Enter or
+   * Space) instead of lifting by itself. Ignored while `loop` is set.
+   */
+  waitForClick?: boolean
   /** Extra root class names. */
   className?: string
 }
@@ -1303,6 +1308,7 @@ export default function StardustStagePreloader({
   fontFamily = DISPLAY_STACK,
   height = "100svh",
   onComplete,
+  waitForClick = false,
   className = "",
 }: StardustStagePreloaderProps) {
   const [phase, setPhase] = React.useState<Phase>("load")
@@ -1606,6 +1612,7 @@ export default function StardustStagePreloader({
       return () => clearTimeout(t)
     }
     if (phase === "reveal") {
+      if (waitForClick && !loop) return
       const t = setTimeout(() => {
         if (loop) setVeil(true)
         else setPhase("lift")
@@ -1619,7 +1626,7 @@ export default function StardustStagePreloader({
       }, LIFT_MS)
       return () => clearTimeout(t)
     }
-  }, [phase, loop])
+  }, [phase, loop, waitForClick])
 
   // the veil comes down, the cosmos resets beneath it, the veil goes up
   React.useEffect(() => {

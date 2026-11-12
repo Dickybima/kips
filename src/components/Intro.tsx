@@ -36,6 +36,7 @@ export function Intro() {
         caption="KIPS on Robinhood Chain"
         height="100dvh"
         onComplete={finish}
+        waitForClick
       />
     </div>
   );
