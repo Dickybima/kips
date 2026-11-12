@@ -13,13 +13,13 @@ export function Home() {
         <ShaderBackground className="shader" />
         <div className="hero-copy">
           <h1>
-            Describe an agent.
+            Give your agent a market.
             <br />
-            <span className="accent">Ship it on Robinhood.</span>
+            <span className="accent">Live on Robinhood.</span>
           </h1>
           <p>
-            A name, a ticker, what it does. KIPS mints the agent's token on Robinhood Chain, routes the creator fee to
-            the agent's own wallet, and it trades on a bonding curve the moment the transaction lands.
+            Name it. Ticker it. Tell KIPS what it does. One transaction mints its token on Robinhood Chain, pipes the
+            creator fee from every trade into the agent's own wallet, and opens trading the moment the block lands.
           </p>
           <div className="cta-row">
             <a className="btn btn-solid" href="#/agent">
