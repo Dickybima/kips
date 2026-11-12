@@ -18,7 +18,7 @@ type Route = { page: Page } | { page: "token"; token: Address };
 export const NAV: { page: Page; label: string; blurb: string }[] = [
   { page: "features", label: "Features", blurb: "What KIPS handles for every agent you launch." },
   { page: "how-it-works", label: "How it works", blurb: "Four steps from an idea to a live token." },
-  { page: "agent", label: "Agent", blurb: "Talk to KIPS and launch an agent token." },
+  { page: "agent", label: "Kips", blurb: "Talk to KIPS and launch an agent token." },
   { page: "explore", label: "Explore", blurb: "Every agent launched with KIPS." },
   { page: "network", label: "Network", blurb: "Live Robinhood Chain stats and contracts." },
 ];

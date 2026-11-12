@@ -1,8 +1,7 @@
-import { NAV } from "../App";
 import { AsciiField } from "../components/AsciiField";
 import { ArrowRight } from "../components/Icons";
-import { Label } from "../components/Ui";
 import { useChainStats } from "../lib/chainStats";
+import { Explore } from "./Explore";
 import { fmt } from "../lib/format";
 
 export function Home() {
@@ -56,28 +55,7 @@ export function Home() {
         </div>
       </section>
 
-      <section className="wrap section">
-        <Label n="00">Index</Label>
-        <h2>Where to next?</h2>
-        <p className="prompt-line">
-          <span className="accent">$</span> ls ~/kips
-        </p>
-        <ol className="index">
-          {NAV.map((n, i) => (
-            <li key={n.page}>
-              <a href={`#/${n.page}`}>
-                <span className="muted">{String(i + 1).padStart(2, "0")}</span>
-                <strong>
-                  {n.page}
-                  <span className="muted">/</span>
-                </strong>
-                <span className="muted">{n.blurb}</span>
-                <ArrowRight />
-              </a>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <Explore preview />
 
       <CtaBox />
     </div>

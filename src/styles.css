@@ -466,3 +466,11 @@ ul.note { padding-left: 28px; }
 .bp-logo .small { display: block; }
 .bp-logo .chip { flex: none; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* ---------- home: latest agents preview ---------- */
+.preview-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; }
+.preview-head .prompt-line { margin-bottom: 24px; }
+.preview-head .btn { margin-bottom: 28px; }
+.home .token-card { transition: transform 0.25s ease, border-color 0.25s ease; }
+.home .token-card:hover { transform: translateY(-3px); }
+.home .empty { border-radius: var(--r); }

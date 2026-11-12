@@ -10,6 +10,8 @@ export const robinhoodChain = defineChain({
   name: "Robinhood Chain",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [RPC_URL] } },
+  // Deployed at the canonical address on Robinhood Chain; lets many reads share one call.
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
   ...(EXPLORER_URL
     ? { blockExplorers: { default: { name: "Explorer", url: EXPLORER_URL } } }
     : {}),
@@ -39,7 +41,10 @@ export const NATIVE_QUOTE: Address = zeroAddress;
 
 export const publicClient = createPublicClient({
   chain: robinhoodChain,
-  // Small batches: the public RPC rejects very large JSON-RPC batches.
+  // Contract reads made together are folded into Multicall3 calls, and the
+  // remaining requests go out in small JSON-RPC batches (the public RPC
+  // rejects very large ones).
+  batch: { multicall: { batchSize: 8_192, wait: 16 } },
   transport: http(RPC_URL, { batch: { batchSize: 40, wait: 16 }, retryCount: 2 }),
 });
 

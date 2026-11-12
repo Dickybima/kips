@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Globe, Search, XLogo } from "../components/Icons";
-import { Corners, CopyButton, Leader, PageHead } from "../components/Ui";
+import { Corners, CopyButton, Label, Leader, PageHead } from "../components/Ui";
 import { safeUrl } from "../lib/kips/agent";
 import { errMsg, fmt, pct, shortAddr } from "../lib/format";
 import { publicClient } from "../lib/pons/chain";
@@ -16,7 +16,14 @@ interface Item {
 
 type Sort = "newest" | "oldest" | "name";
 
-export function Explore() {
+/** How many agents the Home preview shows before linking to the full page. */
+const PREVIEW_COUNT = 6;
+
+/**
+ * Lists KIPS agents. As a page it has search, sorting and paging; with
+ * `preview` it is the Home section: the newest agents and a link to Explore.
+ */
+export function Explore({ preview = false }: { preview?: boolean }) {
   const [items, setItems] = useState<Item[]>([]);
   const [cursor, setCursor] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -35,18 +42,19 @@ export function Explore() {
     try {
       const to = from ?? (await publicClient.getBlockNumber());
       const base = checkedBefore.current;
-      const { agents, next, checked: n } = await scanAgents(to, { onProgress: (c) => setChecked(base + c) });
+      const { next, checked: n } = await scanAgents(to, {
+        onProgress: (c) => setChecked(base + c),
+        // Each agent appears as soon as it is found; progress and fees fill in after.
+        onFound: (a) => {
+          setItems((prev) => (prev.some((p) => p.meta.token === a.meta.token) ? prev : [...prev, { ...a, stats: null }]));
+          readCardStats(a.meta.token, a.curve).then(
+            (stats) => setItems((prev) => prev.map((p) => (p.meta.token === a.meta.token ? { ...p, stats } : p))),
+            () => {},
+          );
+        },
+      });
       checkedBefore.current = base + n;
-      const fresh: Item[] = agents.map((a) => ({ ...a, stats: null }));
-      setItems((prev) => [...prev, ...fresh]);
       setCursor(next);
-      // Progress and fees fill in after the cards are on screen.
-      for (const it of fresh) {
-        readCardStats(it.meta.token, it.curve).then(
-          (stats) => setItems((prev) => prev.map((p) => (p.meta.token === it.meta.token ? { ...p, stats } : p))),
-          () => {},
-        );
-      }
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -79,13 +87,30 @@ export function Explore() {
   }, [items, query, sort]);
 
   const q = query.trim();
+  const cards = preview ? shown.slice(0, PREVIEW_COUNT) : shown;
 
   return (
     <section className="wrap section">
-      <PageHead n="04" label="Explore" title="Every agent launched with KIPS.">
-        Only tokens created through KIPS appear here, straight from Robinhood Chain, the moment they go live.
-      </PageHead>
+      {preview ? (
+        <div className="preview-head">
+          <div>
+            <Label n="00">Explore</Label>
+            <h2>Latest agents on KIPS.</h2>
+            <p className="prompt-line">
+              <span className="accent">$</span> ls ~/kips/agents --sort newest
+            </p>
+          </div>
+          <a className="btn btn-ghost" href="#/explore">
+            Explore all agents <ArrowRight />
+          </a>
+        </div>
+      ) : (
+        <PageHead n="04" label="Explore" title="Every agent launched with KIPS.">
+          Only tokens created through KIPS appear here, straight from Robinhood Chain, the moment they go live.
+        </PageHead>
+      )}
 
+      {!preview && (
       <form
         className="filters"
         onSubmit={(e) => {
@@ -104,18 +129,21 @@ export function Explore() {
           <option value="name">--sort name</option>
         </select>
       </form>
+      )}
 
-      <div className="seg-row">
-        <span className="dot-label">
-          <span className="accent">●</span> KIPS agents{items.length > 0 ? ` · ${items.length}` : ""}
-        </span>
-      </div>
+      {!preview && (
+        <div className="seg-row">
+          <span className="dot-label">
+            <span className="accent">●</span> KIPS agents{items.length > 0 ? ` · ${items.length}` : ""}
+          </span>
+        </div>
+      )}
 
       {error && <p className="note bad">Could not read launches from Robinhood Chain: {error}</p>}
 
-      {shown.length > 0 && (
+      {cards.length > 0 && (
         <div className="card-grid">
-          {shown.map((i) => (
+          {cards.map((i) => (
             <TokenCard key={i.meta.token} item={i} />
           ))}
         </div>
@@ -142,6 +170,16 @@ export function Explore() {
         </div>
       )}
 
+      {preview ? (
+        <div className="center">
+          {loading && <span className="muted">checking launches for KIPS agents…</span>}
+          {!loading && shown.length > PREVIEW_COUNT && (
+            <a className="btn btn-ghost" href="#/explore">
+              See all {shown.length} agents <ArrowRight />
+            </a>
+          )}
+        </div>
+      ) : (
       <div className="center">
         {loading ? (
           <span className="muted">checking launches for KIPS agents… {checked > 0 ? `(${checked})` : ""}</span>
@@ -153,7 +191,8 @@ export function Explore() {
           </button>
         ) : null}
       </div>
-      <p className="center muted small">// every token launched through KIPS on Robinhood Chain</p>
+      )}
+      {!preview && <p className="center muted small">// every token launched through KIPS on Robinhood Chain</p>}
     </section>
   );
 }

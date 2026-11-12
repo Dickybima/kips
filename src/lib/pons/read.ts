@@ -210,9 +210,10 @@ export interface AgentLaunch {
 
 /**
  * Finds tokens launched through KIPS: Pons launches since KIPS went live whose
- * on-chain description carries the KIPS profile. Walks back page by page until
- * `want` agents are found, `maxLaunches` launches were checked, or the start
- * block is reached. `next` is null once nothing older remains.
+ * on-chain description carries the KIPS profile. Walks back from `toBlock` to
+ * the KIPS start block (or until `want` agents or `maxLaunches` launches, when
+ * given), reporting each agent through `onFound` as soon as it is seen.
+ * `next` is null once nothing older remains.
  */
 export async function scanAgents(
   toBlock: bigint,
@@ -222,21 +223,25 @@ export async function scanAgents(
     floor?: bigint;
     readMeta?: (token: Address) => Promise<TokenMeta>;
     onProgress?: (checked: number) => void;
+    onFound?: (agent: AgentLaunch) => void;
   } = {},
 ): Promise<{ agents: AgentLaunch[]; next: bigint | null; checked: number }> {
-  const want = opts.want ?? 12;
-  const maxLaunches = opts.maxLaunches ?? 240;
+  const want = opts.want ?? Infinity;
+  const maxLaunches = opts.maxLaunches ?? Infinity;
   const floor = opts.floor ?? KIPS_START_BLOCK;
   const readMeta = opts.readMeta ?? readTokenMeta;
   const agents: AgentLaunch[] = [];
   let cursor: bigint | null = toBlock;
   let checked = 0;
   while (cursor !== null && agents.length < want && checked < maxLaunches) {
-    const { logs, next } = await scanLaunches(cursor, { want: 40, floor });
+    const { logs, next } = await scanLaunches(cursor, { want: 120, floor });
     const metas = await Promise.all(logs.map((l) => readMeta(l.token).catch(() => null)));
     logs.forEach((l, i) => {
       const meta = metas[i];
-      if (meta?.profile) agents.push({ meta, curve: l.curve, block: l.blockNumber });
+      if (!meta?.profile) return;
+      const agent = { meta, curve: l.curve, block: l.blockNumber };
+      agents.push(agent);
+      opts.onFound?.(agent);
     });
     checked += logs.length;
     opts.onProgress?.(checked);
