@@ -86,12 +86,14 @@ export const XLogo = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-/** The KIPS mark: a bracketed agent node on a chain link. */
+/** The KIPS mark: the same green-on-black badge as the favicon. */
 export const KipsMark = (p: SVGProps<SVGSVGElement>) => (
-  <svg {...base({ width: 26, height: 26, ...p })}>
-    <path d="M7 4H4v16h3M17 4h3v16h-3" />
-    <circle cx="12" cy="9.5" r="2.4" />
-    <path d="M12 12v3M9 18h6" />
-    <circle cx="12" cy="9.5" r=".6" fill="currentColor" />
+  <svg width={30} height={30} viewBox="0 0 32 32" aria-hidden="true" className="kips-mark" {...p}>
+    <rect width="32" height="32" rx="7" fill="#070809" />
+    <g fill="none" stroke="#00c805" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 7H7v18h3M22 7h3v18h-3" />
+      <circle cx="16" cy="13" r="3" />
+      <path d="M16 16v4M12.5 23h7" />
+    </g>
   </svg>
 );

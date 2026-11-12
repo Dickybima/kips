@@ -91,7 +91,8 @@ p { margin: 0; }
 .nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .nav-in { max-width: 1104px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; gap: 28px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.32em; font-size: 15px; }
-.brand svg { color: var(--fg); }
+/* The favicon badge; the hairline keeps its black square visible on any background. */
+.brand .kips-mark { flex: none; border-radius: 7px; box-shadow: 0 0 0 1px var(--line); }
 .links { display: flex; gap: 24px; flex: 1; height: 100%; }
 .links a { display: flex; align-items: center; color: var(--muted); font-size: 13px; position: relative; }
 .links a:hover { color: var(--fg); }
