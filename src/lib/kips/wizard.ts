@@ -1,7 +1,7 @@
 // The question script behind the KIPS terminal. Pure data and functions so the
 // conversation can be tested without a browser.
 import { isAddress } from "viem";
-import { CATEGORIES, LIMITS, byteLength, safeUrl, type Category, type LaunchForm } from "./agent";
+import { AGENT_CATEGORIES, LIMITS, byteLength, safeUrl, type Category, type LaunchForm } from "./agent";
 import { parseAmount } from "../format";
 
 export interface Answers {
@@ -60,10 +60,10 @@ export const STEPS: Step[] = [
   },
   {
     key: "category",
-    ask: () => `Category? ${CATEGORIES.join(" / ")} (or skip for other)`,
+    ask: () => `Category? ${AGENT_CATEGORIES.join(" / ")} (or skip for other)`,
     fallback: "other",
     parse: (raw) =>
-      CATEGORIES.includes(raw.toLowerCase() as Category) ? raw.toLowerCase() : fail(`Pick one of: ${CATEGORIES.join(", ")}.`),
+      AGENT_CATEGORIES.includes(raw.toLowerCase() as Category) ? raw.toLowerCase() : fail(`Pick one of: ${AGENT_CATEGORIES.join(", ")}.`),
   },
   { key: "skills", ask: () => "Skills, comma separated? (enter to skip)", fallback: "", parse: (raw) => raw },
   {

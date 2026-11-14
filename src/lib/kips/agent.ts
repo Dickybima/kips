@@ -11,8 +11,10 @@ export const KIPS_TAG = "[kips:1]";
 /** Pons v2 on-chain metadata limits, in UTF-8 bytes. */
 export const LIMITS = { name: 64, symbol: 16, logo: 512, description: 2048, social: 256 } as const;
 
-export const CATEGORIES = ["assistant", "trading", "research", "social", "gaming", "infra", "other"] as const;
+export const CATEGORIES = ["assistant", "trading", "research", "social", "gaming", "infra", "other", "profile"] as const;
 export type Category = (typeof CATEGORIES)[number];
+/** Categories offered for agents; "profile" marks a tokenized X profile. */
+export const AGENT_CATEGORIES: readonly Category[] = CATEGORIES.filter((c) => c !== "profile");
 
 export interface AgentProfile {
   category: Category;

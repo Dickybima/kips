@@ -280,7 +280,7 @@ function TokenCard({ item, official = false }: { item: Item; official?: boolean 
         {official ? (
           <span className="badge">official</span>
         ) : meta.profile ? (
-          <span className="badge">{meta.profile.category}</span>
+          <span className="badge">{meta.profile.category === "profile" ? "x profile" : meta.profile.category}</span>
         ) : (
           <span className="badge badge-dim">token</span>
         )}

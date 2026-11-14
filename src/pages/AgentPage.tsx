@@ -133,12 +133,18 @@ export function AgentPage({ token }: { token: Address }) {
           {isOfficial(token) ? (
             <span className="tag accent">official</span>
           ) : meta?.profile ? (
-            <span className="tag accent">{meta.profile.category}</span>
+            <span className="tag accent">{meta.profile.category === "profile" ? "x profile" : meta.profile.category}</span>
           ) : (
             <span className="tag">Token</span>
           )}
         </div>
 
+        {meta?.profile?.category === "profile" && (
+          <p className="note">
+            A tokenized X profile. Anyone can tokenize a public profile, so this token is not created or endorsed by
+            the account unless they launched it themselves.
+          </p>
+        )}
         {!meta?.profile && !isOfficial(token) && (
           <p className="note">This token was launched without a KIPS agent profile.</p>
         )}

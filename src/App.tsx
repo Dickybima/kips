@@ -15,14 +15,16 @@ import { Home } from "./pages/Home";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Network } from "./pages/Network";
 import { Terminal } from "./pages/Terminal";
+import { Tokenize } from "./pages/Tokenize";
 
-type Page = "home" | "features" | "how-it-works" | "agent" | "explore" | "terminal" | "network";
+type Page = "home" | "features" | "how-it-works" | "agent" | "tokenize" | "explore" | "terminal" | "network";
 type Route = { page: Page } | { page: "token"; token: Address };
 
 export const NAV: { page: Page; label: string; blurb: string }[] = [
   { page: "features", label: "Features", blurb: "What KIPS handles for every agent you launch." },
   { page: "how-it-works", label: "How it works", blurb: "Four steps from an idea to a live token." },
   { page: "agent", label: "Kips", blurb: "Talk to KIPS and launch an agent token." },
+  { page: "tokenize", label: "Tokenize X", blurb: "Turn any X profile into a token." },
   { page: "explore", label: "Explore", blurb: "Every agent launched with KIPS." },
   { page: "terminal", label: "Terminal", blurb: "Buy and sell agent tokens by chat." },
   { page: "network", label: "Network", blurb: "Live Robinhood Chain stats and contracts." },
@@ -118,6 +120,7 @@ export function App() {
         {route.page === "features" && <Features />}
         {route.page === "how-it-works" && <HowItWorks />}
         {route.page === "agent" && <Agent />}
+        {route.page === "tokenize" && <Tokenize />}
         {route.page === "explore" && <Explore />}
         {route.page === "terminal" && <Terminal />}
         {route.page === "network" && <Network />}
