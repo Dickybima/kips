@@ -483,3 +483,19 @@ ul.note { padding-left: 28px; }
 .official { margin-bottom: 40px; }
 .official .dot-label { display: block; margin-bottom: 18px; }
 .token-official { box-shadow: 0 24px 60px -30px color-mix(in srgb, var(--accent) 60%, transparent); }
+
+/* Kips launch: steps and preview card */
+.lab-steps { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.lab-steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.lab-steps li.done { color: var(--fg); }
+.lab-step-n { width: 22px; height: 22px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); font-size: 11px; }
+.lab-steps li.done .lab-step-n { background: var(--accent); border-color: var(--accent); color: #000; }
+.bp-logo-pick { padding: 0; border: 0; background: none; cursor: pointer; flex: none; border-radius: 10px; }
+.bp-logo-pick:disabled { cursor: default; }
+.bp-logo-pick:hover:not(:disabled) .bp-logo-ph, .bp-logo-pick:hover:not(:disabled) img { border-color: var(--accent); }
+.bp-logo-ph svg { width: 20px; height: 20px; }
+.bp-about { margin: 0; padding: 14px; font-size: 12.5px; line-height: 1.6; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.bp-extra { margin: 0; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; border-bottom: 1px solid var(--line); }
+.bp-extra div { display: flex; gap: 10px; justify-content: space-between; min-width: 0; }
+.bp-extra dt { flex: none; }
+.bp-extra dd { margin: 0; min-width: 0; text-align: right; }

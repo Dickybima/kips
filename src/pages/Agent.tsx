@@ -4,19 +4,19 @@ import { ArrowUp, ImageIcon, Sparkle } from "../components/Icons";
 import { LogoError, prepareLogo, uploadLogo } from "../lib/kips/image";
 import { Label } from "../components/Ui";
 import { validateLaunchForm } from "../lib/kips/agent";
-import { parseIntent } from "../lib/kips/intent";
+import { parseIntent, parseQuick } from "../lib/kips/intent";
 import { STEPS, answerStep, initialBuyWei, taxBps, toLaunchForm, type Answers } from "../lib/kips/wizard";
-import { errMsg, fmt, pct, shortAddr } from "../lib/format";
+import { errMsg, fmt, shortAddr } from "../lib/format";
 import { useChainStats } from "../lib/chainStats";
 import { readLaunchEnv, type LaunchEnv } from "../lib/pons/read";
 import { prepareLaunch, waitForLaunch, type PreparedLaunch } from "../lib/pons/write";
 import { useWallet } from "../lib/wallet";
 
 const SLIPPAGE_BPS = 500n;
-/** Needed before a launch can be simulated. */
+/** Needed before a launch. */
 const REQUIRED: (keyof Answers)[] = ["name", "symbol"];
 /** Asked for in this order; after the required ones, each can be skipped. */
-const ASK: (keyof Answers)[] = ["name", "symbol", "about", "category"];
+const ASK: (keyof Answers)[] = ["name", "symbol", "about", "logo"];
 
 type Who = "kips" | "you";
 type Tone = "plain" | "ok" | "err" | "dim";
@@ -28,20 +28,26 @@ interface Msg {
   /** An image shown in the bubble, e.g. the logo the user just picked. */
   image?: string;
 }
-type Phase = "collect" | "simulated" | "busy" | "done";
+type Phase = "collect" | "busy" | "done";
 
-// Each example is a complete agent on its own, so one click gives a launchable blueprint.
+// One click fills a whole agent.
 const EXAMPLES = [
-  "name: Atlas ticker: ATLAS category: trading about: Finds momentum on Robinhood Chain and trades it.",
-  "agent Scout ticker SCOUT category research about Watches new launches and posts alerts",
-  "name: Echo ticker: ECHO category: social about: Turns your posts into replies. x: @echo",
-  "fee: 2 buy: 0.01",
+  "Atlas $ATLAS Finds momentum on Robinhood Chain and trades it",
+  "Scout $SCOUT Watches new launches and posts alerts",
+  "Echo $ECHO Turns your posts into replies",
 ];
 
-const LABELS: Record<keyof Answers, string> = {
+const QUESTIONS: Partial<Record<keyof Answers, string>> = {
+  name: "What's your agent called?",
+  symbol: "Nice. What ticker should it trade under? (e.g. ATLAS)",
+  about: "What does it do? One line is enough, or type skip.",
+  logo: "Add a logo: press the image button, or drop or paste an image here. Type skip to launch without one.",
+};
+
+const LABELS: Partial<Record<keyof Answers, string>> = {
   name: "name",
   symbol: "ticker",
-  about: "about",
+  about: "description",
   category: "category",
   skills: "skills",
   endpoint: "endpoint",
@@ -49,11 +55,13 @@ const LABELS: Record<keyof Answers, string> = {
   website: "website",
   twitter: "x",
   telegram: "telegram",
-  wallet: "fee_wallet",
-  tax: "creator_fee_pct",
+  wallet: "fee wallet",
+  tax: "creator fee",
   buyback: "buyback",
-  buy: "initial_buy_eth",
+  buy: "initial buy",
 };
+/** Extra fields people can still set by typing key: value; shown on the card once set. */
+const EXTRAS: (keyof Answers)[] = ["twitter", "website", "telegram", "buy", "tax", "wallet", "category", "endpoint"];
 
 function blockedReason(env: LaunchEnv, hasAccount: boolean): string | null {
   if (!env.launchEnabled) return "Launches are currently paused by the protocol.";
@@ -79,7 +87,7 @@ export function Agent() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [answers, setAnswers] = useState<Partial<Answers>>({});
   const [phase, setPhase] = useState<Phase>("collect");
-  const [prepared, setPrepared] = useState<PreparedLaunch | null>(null);
+  const [launched, setLaunched] = useState<Address | null>(null);
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
   const [env, setEnv] = useState<LaunchEnv | null>(null);
@@ -101,9 +109,8 @@ export function Agent() {
   useEffect(() => {
     if (greeted.current) return;
     greeted.current = true;
-    // Plain text before anything else is read as the agent's name.
     pending.current = "name";
-    say("kips", "Hi, I'm KIPS. Tell me about the agent you want to launch on Robinhood Chain: its name, ticker, what it does and a category. Use any of the formats on the left, or just start with a name.");
+    say("kips", "Hi, I'm KIPS. Let's launch your agent's token. What's your agent called?\nOr say it all at once: Atlas $ATLAS Trades momentum for you");
   }, [say]);
 
   // Per-wallet launch permissions; the shared copy covers the wallet-less case.
@@ -125,22 +132,16 @@ export function Agent() {
   function nextQuestion(a: Partial<Answers>, wasReady = false, changed: (keyof Answers)[] = []) {
     const next = nextToAsk(a);
     if (next) {
-      const step = STEPS.find((s) => s.key === next)!;
-      pending.current = step.key;
-      const canLaunch = missingRequired(a).length === 0;
-      return say("kips", canLaunch ? `${step.ask(ctx())}\n(You can also type launch now.)` : step.ask(ctx()));
+      pending.current = next;
+      return say("kips", QUESTIONS[next] ?? STEPS.find((s) => s.key === next)!.ask(ctx()));
     }
     pending.current = null;
     if (wasReady) {
       const set = changed.filter((k) => a[k] !== undefined);
       if (set.length === 0) return;
-      return say("kips", `Updated ${set.map((k) => `${LABELS[k]} → ${a[k] || "(none)"}`).join(", ")}. Type launch when you're ready.`, "ok");
+      return say("kips", `Updated ${set.map((k) => `${LABELS[k]} → ${a[k] || "(none)"}`).join(", ")}.`, "ok");
     }
-    say(
-      "kips",
-      "The blueprint is ready. Optional: endpoint, logo, website, x, telegram, fee_wallet, fee, buyback, buy (e.g. fee: 2). Type launch when you're ready.",
-      "ok",
-    );
+    say("kips", `${a.name} ($${a.symbol}) is ready. Press Launch token, or type launch.`, "ok");
   }
 
   function applyFields(fields: Partial<Answers>): Partial<Answers> {
@@ -158,23 +159,28 @@ export function Agent() {
     return next;
   }
 
-  async function simulate() {
+  /** Simulates the launch, then sends it straight to the wallet for signing. */
+  async function launch() {
     const e = env;
-    if (!account) return say("kips", "Connect a wallet first: type connect, or use the button at the top.", "err");
+    if (!account) {
+      say("kips", "Connect a wallet first, then press Launch token again.", "err");
+      return void connect().catch(() => undefined);
+    }
     if (!e) return say("kips", "Still reading Robinhood Chain. Try again in a moment.", "err");
     const reason = blockedReason(e, true);
     if (reason) return say("kips", reason, "err");
     const miss = missingRequired(answersRef.current);
-    if (miss.length) return say("kips", `I still need: ${miss.map((k) => LABELS[k]).join(", ")}.`, "err");
+    if (miss.length) return say("kips", `I still need the ${miss.map((k) => LABELS[k]).join(" and ")}.`, "err");
     const a = withDefaults(answersRef.current);
     const form = toLaunchForm(a);
     const problems = validateLaunchForm(form);
     if (problems.length) return problems.forEach((p) => say("kips", p, "err"));
 
     setPhase("busy");
-    say("kips", "Simulating the launch on Robinhood Chain…", "dim");
+    say("kips", "Checking the launch on Robinhood Chain…", "dim");
+    let p: PreparedLaunch;
     try {
-      const p = await prepareLaunch({
+      p = await prepareLaunch({
         form,
         account,
         creatorFeeRecipient: (a.wallet || account) as Address,
@@ -185,41 +191,34 @@ export function Agent() {
         initialBuy: initialBuyWei(a),
         slippageBps: SLIPPAGE_BPS,
       });
-      setPrepared(p);
-      setPhase("simulated");
-      const lines = [
-        "Simulation passed.",
-        `token     ${p.token}`,
-        `you send  ${fmt(p.value)} ETH (launch fee ${fmt(e.launchFee)} ETH included)`,
-        ...(p.tokensOut > 0n ? [`you get   about ${fmt(p.tokensOut)} ${a.symbol}`] : []),
-        `curve     ${pct(e.configs[0].curveFeeBps)} fee · graduates at ${fmt(e.configs[0].graduationThreshold)} ETH`,
-        "",
-        "Type confirm to sign and launch, or cancel.",
-      ];
-      say("kips", lines.join("\n"), "ok");
     } catch (err) {
       setPhase("collect");
-      say("kips", `Simulation failed, nothing was sent: ${errMsg(err)}`, "err");
+      return say("kips", `This launch would fail, so nothing was sent: ${errMsg(err)}`, "err");
+    }
+    const got = p.tokensOut > 0n ? ` and get about ${fmt(p.tokensOut)} ${a.symbol}` : "";
+    say("kips", `Looks good. Approve in your wallet: you pay ${fmt(p.value)} ETH${got}, plus gas.`, "dim");
+    try {
+      const hash = await p.send(await getClient());
+      say("kips", `Sent ${shortAddr(hash)}. Waiting for Robinhood Chain to confirm…`, "dim");
+      const token = await waitForLaunch(hash);
+      setLaunched(token);
+      setPhase("done");
+      say("kips", `${a.name} is live! $${a.symbol} · ${token}`, "ok");
+      say("kips", "Open the agent page →", "plain", `#/agent/${token}`);
+      say("kips", "Type new to launch another agent.", "dim");
+    } catch (err) {
+      setPhase("collect");
+      say("kips", `${errMsg(err)}\nNothing was launched. Press Launch token to try again.`, "err");
     }
   }
 
-  async function send() {
-    if (!prepared) return;
-    setPhase("busy");
-    say("kips", "Confirm the transaction in your wallet…", "dim");
-    try {
-      const hash = await prepared.send(await getClient());
-      say("kips", `Sent ${shortAddr(hash)}. Waiting for Robinhood Chain to confirm…`, "dim");
-      const token = await waitForLaunch(hash);
-      setPhase("done");
-      say("kips", `${answersRef.current.name} is live at ${token}`, "ok");
-      say("kips", "Open the agent page →", "plain", `#/agent/${token}`);
-      say("kips", "Type restart to launch another agent.", "dim");
-    } catch (err) {
-      setPrepared(null);
-      setPhase("collect");
-      say("kips", `${errMsg(err)}\nNothing was launched. Type launch to try again.`, "err");
-    }
+  function restart() {
+    setAnswers({});
+    answersRef.current = {};
+    setLaunched(null);
+    setPhase("collect");
+    pending.current = "name";
+    say("kips", "Fresh start. What's your agent called?");
   }
 
   async function handle(raw: string) {
@@ -232,26 +231,17 @@ export function Agent() {
       return say(
         "kips",
         [
-          "launch      simulate the launch",
-          "confirm     sign a simulated launch",
-          "cancel      drop a simulated launch",
+          "Type Name $TICKER description, or answer the questions one by one.",
+          "launch      launch the token",
           "skip        skip an optional question",
-          "connect     choose a wallet (connect 2 picks the second)",
-          "disconnect  disconnect the wallet",
-          "restart     start over",
-          "Anything else is read as agent details, e.g. ticker: ATLAS.",
+          "new         start over",
+          "connect     choose a wallet · disconnect",
+          "Extras, any time: x: @handle  website: site.xyz  buy: 0.01  fee: 2",
         ].join("\n"),
         "dim",
       );
     }
-    if (cmd === "restart") {
-      setAnswers({});
-      answersRef.current = {};
-      setPrepared(null);
-      setPhase("collect");
-      pending.current = "name";
-      return say("kips", "Fresh start. What's the agent called?");
-    }
+    if (cmd === "restart" || cmd === "new" || cmd === "reset") return restart();
     if (cmd === "connect" || cmd.startsWith("connect ")) {
       const arg = cmd.slice(7).trim();
       if (!arg && account) return say("kips", `Connected as ${shortAddr(account)} with ${walletName}.`, "dim");
@@ -273,43 +263,31 @@ export function Agent() {
       disconnect();
       return say("kips", "Wallet disconnected.", "dim");
     }
-    if (phase === "done") return say("kips", "This agent is launched. Type restart to launch another.", "dim");
-    if (phase === "simulated") {
-      if (cmd === "confirm") return send();
-      if (cmd === "cancel") {
-        setPrepared(null);
-        setPhase("collect");
-        return say("kips", "Cancelled. Nothing was sent.", "dim");
-      }
-    }
-    if (cmd === "launch") return simulate();
-    if (cmd === "cancel") return say("kips", "There is nothing to cancel.", "dim");
+    if (phase === "done") return say("kips", "This agent is launched. Type new to launch another.", "dim");
+    if (cmd === "launch" || cmd === "confirm" || cmd === "go") return launch();
 
-    // Any edit invalidates a simulated launch.
-    if (prepared) {
-      setPrepared(null);
-      setPhase("collect");
-    }
-
-    if (cmd === "skip") {
+    if (cmd === "skip" || cmd === "no") {
       const k = pending.current;
       const step = k ? STEPS.find((s) => s.key === k) : null;
-      if (!step || step.fallback === undefined) return say("kips", "This one is required.", "err");
+      if (!step || step.fallback === undefined) return say("kips", "This one is needed to launch.", "err");
       return nextQuestion(applyFields({ [step.key]: "" }));
     }
 
-    const fields = parseIntent(text);
     const wasReady = nextToAsk(answersRef.current) === undefined;
+    const fields = parseIntent(text);
     if (Object.keys(fields).length > 0) {
       return nextQuestion(applyFields(fields), wasReady, Object.keys(fields) as (keyof Answers)[]);
     }
+    // "Atlas $ATLAS does things" fills name, ticker and description at once.
+    const quick = pending.current === "name" || pending.current === "symbol" ? parseQuick(text) : {};
+    if (Object.keys(quick).length > 0) return nextQuestion(applyFields(quick));
     if (pending.current) {
       const step = STEPS.find((s) => s.key === pending.current)!;
       const res = answerStep(step, text, ctx());
       if (!res.ok) return say("kips", res.error, "err");
       return nextQuestion(applyFields({ [step.key]: text }));
     }
-    say("kips", "I didn't find any agent details in that. Try ticker: ATLAS, or type help.", "dim");
+    say("kips", "Press Launch token when you're ready, or type help.", "dim");
   }
 
   /** Crops, uploads and sets a logo picked from disk, dropped or pasted. */
@@ -326,15 +304,10 @@ export function Agent() {
     say("kips", "Uploading the logo…", "dim");
     try {
       const url = await uploadLogo(prepared.blob);
-      // A new logo invalidates a launch that was already simulated.
-      if (phase === "simulated") {
-        setPrepared(null);
-        setPhase("collect");
-      }
       const wasReady = nextToAsk(answersRef.current) === undefined;
       const next = applyFields({ logo: url });
       if (next.logo !== url) return;
-      say("kips", "Logo set. It will be stored with the token on-chain.", "ok");
+      say("kips", "Logo set.", "ok");
       if (!wasReady) nextQuestion(next);
     } catch (e) {
       say("kips", e instanceof LogoError ? e.message : errMsg(e), "err");
@@ -360,39 +333,43 @@ export function Agent() {
       });
   }
 
-  const shown = withDefaults(answers);
   const ready = missingRequired(answers).length === 0;
+  const extras = EXTRAS.filter((k) => answers[k]);
+  const steps = [
+    { label: "Name & ticker", done: ready },
+    { label: "Description & logo", done: ready && answers.about !== undefined && answers.logo !== undefined, optional: true },
+    { label: "Launch", done: phase === "done" },
+  ];
 
   return (
     <div className="lab">
       <aside className="lab-side">
-        <Label n="03">The lab</Label>
-        <h1>Talk to KIPS.</h1>
+        <Label n="03">Launch</Label>
+        <h1>Launch in one message.</h1>
         <p className="muted">
-          Share a name, ticker, what the agent does and a category. KIPS asks for anything missing, simulates the
-          launch on Robinhood Chain, and only sends it when you type confirm.
+          Type your agent's name and ticker. KIPS checks the launch on Robinhood Chain and you approve it in your
+          wallet.
         </p>
-        <p className="lab-h">// format</p>
-        <pre className="lab-box">
-          <span className="muted">name:</span> Atlas{"\n"}
-          <span className="muted">ticker:</span> ATLAS{"\n"}
-          <span className="muted">about:</span> Trades for you{"\n"}
-          <span className="muted">category:</span> trading
-        </pre>
+        <ol className="lab-steps">
+          {steps.map((st, i) => (
+            <li key={st.label} className={st.done ? "done" : ""}>
+              <span className="lab-step-n">{st.done ? "✓" : i + 1}</span>
+              {st.label}
+              {st.optional && <span className="muted small"> · optional</span>}
+            </li>
+          ))}
+        </ol>
         <p className="lab-h">// try one</p>
         <div className="lab-examples">
           {EXAMPLES.map((ex) => (
-            <button key={ex} className="lab-box lab-ex" onClick={() => submit(ex)} disabled={busy}>
+            <button key={ex} className="lab-box lab-ex" onClick={() => submit(ex)} disabled={busy || phase !== "collect"}>
               <span className="accent">›</span> {ex}
             </button>
           ))}
         </div>
         <p className="muted small">
-          Add a logo with the <b>image</b> button, or drop or paste an image into the chat.
-        </p>
-        <p className="muted small">
-          Commands: <b>launch</b>, <b>confirm</b>, <b>cancel</b>, <b>skip</b>, <b>help</b>. Launching sends a real
-          transaction on Robinhood Chain: you pay the launch fee and gas shown in your wallet.
+          Launching sends a real transaction: you pay the launch fee and gas. Extras like <b>x: @handle</b> or{" "}
+          <b>buy: 0.01</b> can be typed any time; type <b>help</b> for more.
         </p>
       </aside>
 
@@ -487,55 +464,62 @@ export function Agent() {
             <i />
             <i />
             <i className={ready ? "on" : ""} />
-            <span>blueprint.json</span>
+            <span>preview</span>
           </div>
           <div className="bp-logo">
-            {answers.logo ? (
-              <img src={answers.logo} alt="Agent logo" />
-            ) : (
-              <span className="bp-logo-ph">{(answers.symbol ?? "?").slice(0, 2).toUpperCase()}</span>
-            )}
-            <div className="grow">
-              <strong className="ellipsis">{answers.name ?? "Unnamed agent"}</strong>
-              <span className="muted small">{answers.symbol ? `$${answers.symbol}` : "no ticker yet"}</span>
-            </div>
             <button
               type="button"
-              className="chip"
+              className="bp-logo-pick"
               onClick={() => fileInput.current?.click()}
-              disabled={busy || uploading || phase === "busy" || phase === "done"}
+              disabled={busy || uploading || phase !== "collect"}
+              aria-label={answers.logo ? "Change logo" : "Upload logo"}
+              title={answers.logo ? "Change logo" : "Upload logo"}
             >
-              {uploading ? "Uploading…" : answers.logo ? "Change logo" : "Upload logo"}
+              {uploading ? (
+                <span className="bp-logo-ph">
+                  <span className="spin" />
+                </span>
+              ) : answers.logo ? (
+                <img src={answers.logo} alt="Agent logo" />
+              ) : (
+                <span className="bp-logo-ph">
+                  <ImageIcon />
+                </span>
+              )}
             </button>
+            <div className="grow">
+              <strong className="ellipsis">{answers.name || "Your agent"}</strong>
+              <span className="muted small">{answers.symbol ? `$${answers.symbol}` : "$TICKER"}</span>
+            </div>
           </div>
-          {Object.keys(answers).length === 0 ? (
-            <p className="bp-empty muted">Your agent's blueprint will take shape here.</p>
-          ) : (
-            <pre className="bp-json">
-              {"{\n"}
-              {STEPS.map((s, i) => {
-                const set = answers[s.key] !== undefined;
-                const v = shown[s.key];
-                const need = REQUIRED.includes(s.key) && !set;
-                return (
-                  <span key={s.key} className={need ? "bp-need" : set ? "" : "muted"}>
-                    {"  "}"{LABELS[s.key]}": {need ? "…" : JSON.stringify(s.key === "wallet" && !v ? account ?? "your wallet" : v)}
-                    {i < STEPS.length - 1 ? "," : ""}
-                    {"\n"}
-                  </span>
-                );
-              })}
-              {"}"}
-            </pre>
+          <p className={answers.about ? "bp-about" : "bp-about muted"}>{answers.about || "No description yet."}</p>
+          {extras.length > 0 && (
+            <dl className="bp-extra">
+              {extras.map((k) => (
+                <div key={k}>
+                  <dt className="muted">{LABELS[k]}</dt>
+                  <dd className="ellipsis">{k === "tax" ? `${answers[k]}%` : k === "buy" ? `${answers[k]} ETH` : answers[k]}</dd>
+                </div>
+              ))}
+            </dl>
           )}
           <div className="bp-foot">
-            {phase === "simulated" ? (
-              <button className="btn btn-solid full" onClick={() => submit("confirm")} disabled={busy}>
-                Confirm launch
-              </button>
+            {phase === "done" && launched ? (
+              <>
+                <a className="btn btn-solid full" href={`#/agent/${launched}`}>
+                  View your token
+                </a>
+                <button className="btn btn-ghost full" onClick={() => submit("new")} disabled={busy}>
+                  Launch another
+                </button>
+              </>
             ) : (
-              <button className="btn btn-ghost full" onClick={() => submit("launch")} disabled={busy || !ready || phase !== "collect"}>
-                {ready ? "Simulate launch" : `Needs ${missingRequired(answers).map((k) => LABELS[k]).join(", ")}`}
+              <button
+                className="btn btn-solid full"
+                onClick={() => submit("launch")}
+                disabled={busy || phase !== "collect" || (!!account && !ready)}
+              >
+                {phase === "busy" ? "Launching…" : !account ? "Connect wallet" : ready ? "Launch token" : "Add a name and ticker"}
               </button>
             )}
             {env && <p className="muted small">Launch fee {fmt(env.launchFee)} ETH + gas</p>}

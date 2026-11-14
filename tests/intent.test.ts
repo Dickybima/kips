@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseIntent } from "../src/lib/kips/intent";
+import { parseIntent, parseQuick } from "../src/lib/kips/intent";
 
 describe("parseIntent", () => {
   it("reads key: value pairs on one line or many", () => {
@@ -40,5 +40,26 @@ describe("parseIntent", () => {
   });
   it("returns nothing for plain chat", () => {
     expect(parseIntent("hello there")).toEqual({});
+  });
+});
+
+describe("parseQuick", () => {
+  it("reads name, $ticker and an optional description", () => {
+    expect(parseQuick("Atlas $ATLAS Finds momentum and trades it")).toEqual({
+      name: "Atlas",
+      symbol: "ATLAS",
+      about: "Finds momentum and trades it",
+    });
+    expect(parseQuick("Market Scout ($SCOUT) - watches new launches")).toEqual({
+      name: "Market Scout",
+      symbol: "SCOUT",
+      about: "watches new launches",
+    });
+    expect(parseQuick("Echo $echo")).toEqual({ name: "Echo", symbol: "echo" });
+  });
+  it("ignores messages without a name before the ticker", () => {
+    expect(parseQuick("$ATLAS")).toEqual({});
+    expect(parseQuick("hello there")).toEqual({});
+    expect(parseQuick("name: Atlas")).toEqual({});
   });
 });

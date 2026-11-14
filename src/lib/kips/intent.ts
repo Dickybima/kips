@@ -87,3 +87,16 @@ export function parseIntent(text: string): Partial<Answers> {
   });
   return out;
 }
+
+/**
+ * The one-line shorthand "Atlas $ATLAS Finds momentum and trades it": a name,
+ * then a $ticker, then an optional description. Empty when the message is not
+ * in that shape.
+ */
+export function parseQuick(text: string): Partial<Answers> {
+  const m = text.replace(/\s+/g, " ").trim().match(/^(.{1,40}?)\s*\(?\$([A-Za-z0-9_]{1,16})\)?(?:\s*[-—:–,]?\s+(.+))?$/);
+  if (!m) return {};
+  const name = m[1].replace(/[-—:–,]\s*$/, "").trim();
+  if (!name) return {};
+  return { name, symbol: m[2], ...(m[3] ? { about: m[3].trim() } : {}) };
+}
