@@ -23,6 +23,7 @@ import { buy, sell } from "../lib/pons/write";
 import { useWallet } from "../lib/wallet";
 import { CopyButton } from "../components/Ui";
 import { isOfficial } from "../lib/kips/official";
+import { BurnPanel } from "../components/Burn";
 import { Logo } from "./Explore";
 
 const SLIPPAGE_BPS = 300n;
@@ -183,6 +184,8 @@ export function AgentPage({ token }: { token: Address }) {
             ))}
           </div>
         )}
+
+        {isOfficial(token) && <BurnPanel token={token} symbol={meta?.symbol ?? "KIPS"} />}
       </section>
 
       <aside className="panel">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Globe, Search, XLogo } from "../components/Icons";
 import { Corners, CopyButton, Label, Leader, PageHead } from "../components/Ui";
+import { BurnLine } from "../components/Burn";
 import { safeUrl } from "../lib/kips/agent";
 import { OFFICIAL_TOKEN, isOfficial } from "../lib/kips/official";
 import { errMsg, fmt, pct, shortAddr } from "../lib/format";
@@ -295,6 +296,7 @@ function TokenCard({ item, official = false }: { item: Item; official?: boolean 
       <div className="meter thin">
         <div style={{ width: `${(progress ?? 0) / 100}%` }} />
       </div>
+      {official && <BurnLine token={meta.token} symbol={meta.symbol} />}
       <div className="chip-row">
         {x && (
           <a className="chip" href={x} target="_blank" rel="noopener noreferrer">

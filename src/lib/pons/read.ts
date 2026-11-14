@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import { parseAbiItem, type Address } from "viem";
 import { curveAbi, factoryAbi, tokenAbi } from "./abi";
 import { FACTORY_DEPLOY_BLOCK, KIPS_START_BLOCK, NATIVE_QUOTE, PONS, publicClient } from "./chain";
 import { decodeDescription, type AgentProfile } from "../kips/agent";
@@ -272,4 +272,74 @@ export async function readCardStats(token: Address, curve: Address): Promise<Car
     graduated: l.phase !== 0,
     creatorFeeRecipient: l.creatorFeeRecipient,
   };
+}
+
+/** Addresses tokens are sent to when they are burned. */
+export const BURN_ADDRESSES: Address[] = [
+  "0x000000000000000000000000000000000000dEaD",
+  "0x0000000000000000000000000000000000000000",
+];
+/** Every Pons v2 token starts with 1B tokens (18 decimals). */
+export const INITIAL_SUPPLY = 1_000_000_000n * 10n ** 18n;
+
+export interface BurnStats {
+  /** Tokens sent to a burn address plus any destroyed with burn(). */
+  burned: bigint;
+  /** Burned share of the initial supply, in basis points. */
+  bps: bigint;
+}
+
+/** Burned tokens: burn-address balances plus the drop in total supply. */
+export async function readBurned(token: Address): Promise<BurnStats> {
+  const [supply, ...held] = await Promise.all([
+    publicClient.readContract({ address: token, abi: tokenAbi, functionName: "totalSupply" }),
+    ...BURN_ADDRESSES.map((a) =>
+      publicClient.readContract({ address: token, abi: tokenAbi, functionName: "balanceOf", args: [a] }),
+    ),
+  ]);
+  const destroyed = supply < INITIAL_SUPPLY ? INITIAL_SUPPLY - supply : 0n;
+  const burned = held.reduce((t, b) => t + b, destroyed);
+  return { burned, bps: (burned * 10_000n) / INITIAL_SUPPLY };
+}
+
+export interface BurnTx {
+  hash: `0x${string}`;
+  blockNumber: bigint;
+  amount: bigint;
+  timestamp: number | null;
+}
+
+const transferEvent = parseAbiItem("event Transfer(address indexed from, address indexed to, uint256 value)");
+
+/** Transfers of `token` into a burn address since `fromBlock`, newest first. */
+export async function readBurnHistory(token: Address, fromBlock = KIPS_START_BLOCK): Promise<BurnTx[]> {
+  const head = await publicClient.getBlockNumber();
+  const step = 2_000_000n;
+  const windows: [bigint, bigint][] = [];
+  for (let b = fromBlock; b <= head; b += step) windows.push([b, b + step - 1n > head ? head : b + step - 1n]);
+  const logs = (
+    await Promise.all(
+      // The RPC allows wide ranges only with one value per topic, so each
+      // burn address is queried on its own.
+      windows.flatMap(([from, to]) =>
+        BURN_ADDRESSES.map((burn) =>
+          publicClient.getLogs({ address: token, event: transferEvent, args: { to: burn }, fromBlock: from, toBlock: to }),
+        ),
+      ),
+    )
+  ).flat();
+  const txs = logs
+    .filter((l) => l.transactionHash && l.args.value)
+    .map((l) => ({ hash: l.transactionHash!, blockNumber: l.blockNumber!, amount: l.args.value!, timestamp: null as number | null }))
+    .sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : 1));
+  await Promise.all(
+    txs.slice(0, 20).map(async (t) => {
+      try {
+        t.timestamp = Number((await publicClient.getBlock({ blockNumber: t.blockNumber })).timestamp);
+      } catch {
+        // the date is a nicety
+      }
+    }),
+  );
+  return txs;
 }
