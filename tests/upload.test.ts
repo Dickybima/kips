@@ -7,7 +7,7 @@ vi.mock("@vercel/blob", () => ({
   put: (path: string, body: unknown, opts: Record<string, unknown>) => put(path, body, opts),
 }));
 
-const { POST, GET, MAX_BYTES, looksLike, blobToken } = await import("../api/upload");
+const { POST, GET, MAX_BYTES, looksLike, blobToken, blobStoreId } = await import("../api/upload");
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
@@ -61,9 +61,23 @@ describe("api/upload", () => {
 
   it("explains when no Blob store is connected", async () => {
     delete env.BLOB_READ_WRITE_TOKEN;
+    put.mockRejectedValueOnce(new Error("No blob credentials found. Pass a `token` option"));
     const res = await POST(req(PNG, "image/png"));
     expect(res.status).toBe(503);
     expect((await res.json()).error).toMatch(/Vercel Blob/);
+  });
+
+  it("falls back to OIDC auth with the store id when there is no token", async () => {
+    delete env.BLOB_READ_WRITE_TOKEN;
+    env.KIPS_STORE_ID = "store_abc";
+    try {
+      const res = await POST(req(PNG, "image/png"));
+      expect(res.status).toBe(200);
+      expect(put.mock.calls[0][2]).toMatchObject({ storeId: "store_abc" });
+      expect(put.mock.calls[0][2]).not.toHaveProperty("token");
+    } finally {
+      delete env.KIPS_STORE_ID;
+    }
   });
 
   it("reports storage failures without leaking details", async () => {
@@ -75,6 +89,15 @@ describe("api/upload", () => {
 
   it("only accepts POST", () => {
     expect(GET().status).toBe(405);
+  });
+});
+
+describe("blobStoreId", () => {
+  it("finds the store id under the default or a prefixed name", () => {
+    expect(blobStoreId({ BLOB_STORE_ID: "store_a" })).toBe("store_a");
+    expect(blobStoreId({ KIPS_STORE_ID: "store_b" })).toBe("store_b");
+    expect(blobStoreId({ OTHER_STORE_ID: "nope" })).toBeNull();
+    expect(blobStoreId({})).toBeNull();
   });
 });
 

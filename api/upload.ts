@@ -20,6 +20,23 @@ export function blobToken(env: Record<string, string | undefined> = process.env)
   return null;
 }
 
+/**
+ * The store id for OIDC auth, which newer Blob stores use instead of a
+ * read-write token: BLOB_STORE_ID, or <PREFIX>_STORE_ID holding a store_ id.
+ */
+export function blobStoreId(env: Record<string, string | undefined> = process.env): string | null {
+  if (env.BLOB_STORE_ID) return env.BLOB_STORE_ID;
+  for (const [key, value] of Object.entries(env)) {
+    if (key.endsWith("STORE_ID") && value?.startsWith("store_")) return value;
+  }
+  return null;
+}
+
+/** Names (never values) of the Blob-related variables this function can see. */
+export function blobVarNames(env: Record<string, string | undefined> = process.env): string[] {
+  return Object.keys(env).filter((k) => /BLOB|STORE_ID|READ_WRITE_TOKEN/.test(k)).sort();
+}
+
 const TYPES: Record<string, string> = {
   "image/webp": "webp",
   "image/png": "png",
@@ -53,22 +70,29 @@ export async function POST(request: Request): Promise<Response> {
   if (bytes.byteLength > MAX_BYTES) return json({ error: "That image is too large (1 MB max)." }, 413);
   if (!looksLike(type, bytes)) return json({ error: "That file is not a valid image." }, 415);
   const token = blobToken();
-  if (!token) {
-    return json(
-      { error: "Image uploads are not set up yet: connect a Vercel Blob store to this project, then redeploy." },
-      503,
-    );
-  }
+  const storeId = token ? null : blobStoreId();
   try {
     const blob = await put(`agents/${crypto.randomUUID()}.${ext}`, new Blob([bytes], { type }), {
       access: "public",
       contentType: type,
       addRandomSuffix: false,
       cacheControlMaxAge: 31_536_000,
-      token,
+      ...(token ? { token } : storeId ? { storeId } : {}),
     });
     return json({ url: blob.url });
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("blob upload failed:", message);
+    if (/credentials|storeId|OIDC|token/i.test(message)) {
+      return json(
+        {
+          error: "Image uploads are not set up yet: connect a Vercel Blob store to this project, then redeploy.",
+          detail: message,
+          seen: blobVarNames(),
+        },
+        503,
+      );
+    }
     return json({ error: "The image could not be stored. Try again." }, 502);
   }
 }
