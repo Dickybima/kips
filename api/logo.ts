@@ -3,7 +3,22 @@
 // cannot hand out public URLs, so its logos are read here and served from
 // this site at /api/logo?id=<uuid>.<ext>, which is the URL stored on-chain.
 import { get } from "@vercel/blob";
-import { blobStoreId, blobToken } from "./upload";
+
+declare const process: { env: Record<string, string | undefined> };
+
+// Same lookup as upload.ts. Kept here because a Vercel Function cannot import
+// another function file at runtime.
+function blobAuth(env = process.env): { token: string } | { storeId: string } | Record<string, never> {
+  for (const [key, value] of Object.entries(env)) {
+    if (value && (key === "BLOB_READ_WRITE_TOKEN" || (key.endsWith("READ_WRITE_TOKEN") && value.startsWith("vercel_blob_rw_")))) {
+      return { token: value };
+    }
+  }
+  for (const [key, value] of Object.entries(env)) {
+    if (value && (key === "BLOB_STORE_ID" || (key.endsWith("STORE_ID") && value.startsWith("store_")))) return { storeId: value };
+  }
+  return {};
+}
 
 /** Logo ids are the names upload.ts gives them, nothing else. */
 export const LOGO_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(webp|png|jpg)$/;
@@ -16,12 +31,10 @@ const text = (body: string, status: number) =>
 export async function GET(request: Request): Promise<Response> {
   const id = new URL(request.url).searchParams.get("id") ?? "";
   if (!LOGO_ID.test(id)) return text("Unknown logo.", 404);
-  const token = blobToken();
-  const storeId = token ? null : blobStoreId();
   try {
     const found = await get(`agents/${id}`, {
       access: "private",
-      ...(token ? { token } : storeId ? { storeId } : {}),
+      ...blobAuth(),
     });
     if (!found || found.statusCode !== 200) return text("Unknown logo.", 404);
     return new Response(found.stream, {
