@@ -93,7 +93,10 @@ export async function POST(request: Request): Promise<Response> {
         503,
       );
     }
-    return json({ error: "The image could not be stored. Try again." }, 502);
+    // Blob SDK errors (BlobError and its subclasses) explain setup problems
+    // and hold no secrets; anything else stays hidden.
+    const fromSdk = err instanceof Error && /^Blob/.test(err.constructor.name);
+    return json({ error: "The image could not be stored. Try again.", ...(fromSdk ? { detail: message } : {}) }, 502);
   }
 }
 
