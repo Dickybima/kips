@@ -80,6 +80,18 @@ describe("api/upload", () => {
     }
   });
 
+  it("keeps logos private and serves them from the site when the store is private", async () => {
+    put.mockRejectedValueOnce(new Error("Vercel Blob: Cannot use public access on a private store. The store is configured with private access."));
+    const res = await POST(req(PNG, "image/png"));
+    expect(res.status).toBe(200);
+    const { url } = await res.json();
+    expect(url).toMatch(/^https:\/\/www\.trykips\.app\/api\/logo\?id=[0-9a-f-]{36}\.png$/);
+    expect(url.length).toBeLessThan(512);
+    expect(put).toHaveBeenCalledTimes(2);
+    expect(put.mock.calls[1][2]).toMatchObject({ access: "private" });
+    expect(put.mock.calls[0][0]).toBe(put.mock.calls[1][0]);
+  });
+
   it("reports storage failures without leaking details", async () => {
     put.mockRejectedValueOnce(new Error("secret internal detail"));
     const res = await POST(req(PNG, "image/png"));

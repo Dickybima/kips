@@ -7,6 +7,11 @@ declare const process: { env: Record<string, string | undefined> };
 
 export const MAX_BYTES = 1_000_000;
 
+/** Where logos from a private store are served (see api/logo.ts). */
+export const SITE_URL = (process.env.VITE_SITE_URL || "https://www.trykips.app").replace(/\/$/, "");
+
+const isPrivateStoreError = (message: string) => /private access|public access on a private store/i.test(message);
+
 /**
  * The Blob store's read-write token. Connecting a store adds it as
  * BLOB_READ_WRITE_TOKEN, or as <PREFIX>_READ_WRITE_TOKEN when a prefix was
@@ -71,15 +76,20 @@ export async function POST(request: Request): Promise<Response> {
   if (!looksLike(type, bytes)) return json({ error: "That file is not a valid image." }, 415);
   const token = blobToken();
   const storeId = token ? null : blobStoreId();
+  const auth = token ? { token } : storeId ? { storeId } : {};
+  const id = `${crypto.randomUUID()}.${ext}`;
+  const options = { contentType: type, addRandomSuffix: false, cacheControlMaxAge: 31_536_000, ...auth };
+  const body = () => new Blob([bytes], { type });
   try {
-    const blob = await put(`agents/${crypto.randomUUID()}.${ext}`, new Blob([bytes], { type }), {
-      access: "public",
-      contentType: type,
-      addRandomSuffix: false,
-      cacheControlMaxAge: 31_536_000,
-      ...(token ? { token } : storeId ? { storeId } : {}),
-    });
-    return json({ url: blob.url });
+    try {
+      const blob = await put(`agents/${id}`, body(), { ...options, access: "public" });
+      return json({ url: blob.url });
+    } catch (err) {
+      if (!(err instanceof Error) || !isPrivateStoreError(err.message)) throw err;
+      // A private store: keep the file private and serve it from this site.
+      await put(`agents/${id}`, body(), { ...options, access: "private" });
+      return json({ url: `${SITE_URL}/api/logo?id=${id}` });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("blob upload failed:", message);
