@@ -22,6 +22,7 @@ import {
 import { buy, sell } from "../lib/pons/write";
 import { useWallet } from "../lib/wallet";
 import { CopyButton } from "../components/Ui";
+import { isOfficial } from "../lib/kips/official";
 import { Logo } from "./Explore";
 
 const SLIPPAGE_BPS = 300n;
@@ -128,14 +129,16 @@ export function AgentPage({ token }: { token: Address }) {
               <CopyButton value={token} label="Copy" className="chip chip-sm" />
             </div>
           </div>
-          {meta?.profile ? (
+          {isOfficial(token) ? (
+            <span className="tag accent">official</span>
+          ) : meta?.profile ? (
             <span className="tag accent">{meta.profile.category}</span>
           ) : (
             <span className="tag">Token</span>
           )}
         </div>
 
-        {!meta?.profile && (
+        {!meta?.profile && !isOfficial(token) && (
           <p className="note">This token was launched without a KIPS agent profile.</p>
         )}
         <p className="pre">{meta?.about || "No description."}</p>

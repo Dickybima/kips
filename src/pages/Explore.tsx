@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Globe, Search, XLogo } from "../components/Icons";
 import { Corners, CopyButton, Label, Leader, PageHead } from "../components/Ui";
 import { safeUrl } from "../lib/kips/agent";
+import { OFFICIAL_TOKEN, isOfficial } from "../lib/kips/official";
 import { errMsg, fmt, pct, shortAddr } from "../lib/format";
 import { publicClient } from "../lib/pons/chain";
 import { graduationProgressBps } from "../lib/pons/quote";
-import { readCardStats, scanAgents, type CardStats, type TokenMeta } from "../lib/pons/read";
+import { readCardStats, readLaunched, readTokenMeta, scanAgents, type CardStats, type TokenMeta } from "../lib/pons/read";
 
 interface Item {
   meta: TokenMeta;
@@ -25,6 +26,7 @@ const PREVIEW_COUNT = 6;
  */
 export function Explore({ preview = false }: { preview?: boolean }) {
   const [items, setItems] = useState<Item[]>([]);
+  const [official, setOfficial] = useState<Item | null>(null);
   const [cursor, setCursor] = useState<bigint | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [checked, setChecked] = useState(0);
@@ -46,6 +48,7 @@ export function Explore({ preview = false }: { preview?: boolean }) {
         onProgress: (c) => setChecked(base + c),
         // Each agent appears as soon as it is found; progress and fees fill in after.
         onFound: (a) => {
+          if (isOfficial(a.meta.token)) return; // shown in its own section
           setItems((prev) => (prev.some((p) => p.meta.token === a.meta.token) ? prev : [...prev, { ...a, stats: null }]));
           readCardStats(a.meta.token, a.curve).then(
             (stats) => setItems((prev) => prev.map((p) => (p.meta.token === a.meta.token ? { ...p, stats } : p))),
@@ -66,6 +69,14 @@ export function Explore({ preview = false }: { preview?: boolean }) {
     if (started.current) return;
     started.current = true;
     void load(undefined);
+    // The official token is read directly; it does not need the scan.
+    (async () => {
+      const [meta, launched] = await Promise.all([readTokenMeta(OFFICIAL_TOKEN), readLaunched(OFFICIAL_TOKEN)]);
+      if (!launched) return;
+      setOfficial({ meta, curve: launched.curve, block: 0n, stats: null });
+      const stats = await readCardStats(OFFICIAL_TOKEN, launched.curve);
+      setOfficial((o) => (o ? { ...o, stats } : o));
+    })().catch(() => {});
   }, [load]);
 
   const shown = useMemo(() => {
@@ -131,10 +142,29 @@ export function Explore({ preview = false }: { preview?: boolean }) {
       </form>
       )}
 
-      {!preview && (
+      {!preview && !official && (
         <div className="seg-row">
           <span className="dot-label">
             <span className="accent">●</span> KIPS agents{items.length > 0 ? ` · ${items.length}` : ""}
+          </span>
+        </div>
+      )}
+
+      {official && (
+        <div className="official">
+          <span className="dot-label">
+            <span className="accent">●</span> Official token
+          </span>
+          <div className="card-grid">
+            <TokenCard item={official} official />
+          </div>
+        </div>
+      )}
+
+      {!preview && official && (
+        <div className="seg-row">
+          <span className="dot-label">
+            <span className="accent">●</span> Community agents{items.length > 0 ? ` · ${items.length}` : ""}
           </span>
         </div>
       )}
@@ -204,20 +234,26 @@ export function Logo({ url, symbol }: { url: string; symbol: string }) {
   return <img className="logo" src={src} alt="" loading="lazy" onError={() => setBroken(true)} />;
 }
 
-function TokenCard({ item }: { item: Item }) {
+function TokenCard({ item, official = false }: { item: Item; official?: boolean }) {
   const { meta, stats } = item;
   const progress = stats ? graduationProgressBps(stats.raised, stats.graduationThreshold) : null;
   const x = safeUrl(meta.socials.twitter);
   const web = safeUrl(meta.socials.website);
   return (
-    <Corners className="token-card" accent={!!meta.profile}>
+    <Corners className={official ? "token-card token-official" : "token-card"} accent={official || !!meta.profile}>
       <div className="row">
         <Logo url={meta.logo} symbol={meta.symbol} />
         <div className="grow">
           <strong className="ellipsis">{meta.name}</strong>
           <div className="muted small">${meta.symbol}</div>
         </div>
-        {meta.profile ? <span className="badge">{meta.profile.category}</span> : <span className="badge badge-dim">token</span>}
+        {official ? (
+          <span className="badge">official</span>
+        ) : meta.profile ? (
+          <span className="badge">{meta.profile.category}</span>
+        ) : (
+          <span className="badge badge-dim">token</span>
+        )}
       </div>
       {meta.about && <p className="muted small clamp">{meta.about}</p>}
       <div className="leaders">
