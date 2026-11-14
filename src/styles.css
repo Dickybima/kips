@@ -547,3 +547,26 @@ ul.note { padding-left: 28px; }
   .tx-search { flex-wrap: wrap; }
   .tx-search .btn { width: 100%; }
 }
+
+/* Top profiles */
+.top-profiles { margin-top: 36px; display: flex; flex-direction: column; gap: 12px; }
+.tp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tp-head h3 { margin: 0; }
+.tp-empty { border: 1px dashed var(--line); padding: 18px; text-align: center; margin: 0; }
+.tp-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); }
+.tp-row { display: grid; grid-template-columns: 28px 40px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 14px; }
+.tp-row + .tp-row { border-top: 1px solid var(--line); }
+.tp-row .logo { width: 40px; height: 40px; border-radius: 50%; }
+.tp-rank { color: var(--muted); font-size: 13px; text-align: center; }
+.tp-top1 .tp-rank, .tp-top2 .tp-rank, .tp-top3 .tp-rank { color: var(--accent); font-weight: 700; }
+.tp-top1 { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.tp-who { display: flex; flex-direction: column; min-width: 0; }
+.tp-who strong { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.tp-followers { display: flex; flex-direction: column; align-items: flex-end; }
+.tp-followers strong { font-size: 15px; }
+.tp-trade { white-space: nowrap; }
+@media (max-width: 640px) {
+  .tp-row { grid-template-columns: 22px 36px minmax(0, 1fr) auto; }
+  .tp-row .logo { width: 36px; height: 36px; }
+  .tp-trade { grid-column: 3 / -1; justify-self: start; }
+}

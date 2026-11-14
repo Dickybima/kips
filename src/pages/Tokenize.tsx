@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { ArrowRight, XLogo } from "../components/Icons";
 import { Corners, PageHead } from "../components/Ui";
+import { TopProfiles } from "../components/TopProfiles";
 import { LIMITS, byteLength, validateLaunchForm } from "../lib/kips/agent";
 import {
   XProfileError,
@@ -39,6 +40,7 @@ export function Tokenize() {
   const [launching, setLaunching] = useState(false);
   const [launched, setLaunched] = useState<Address | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
+  const [launches, setLaunches] = useState(0);
   const field = useRef<HTMLInputElement>(null);
 
   const log = (text: string, tone: Line["tone"] = "dim", href?: string) => setLines((l) => [...l, { text, tone, href }]);
@@ -116,6 +118,7 @@ export function Tokenize() {
       log(`Sent ${shortAddr(hash)}. Waiting for Robinhood Chain to confirm…`);
       const token = await waitForLaunch(hash);
       setLaunched(token);
+      setLaunches((n) => n + 1);
       log(`$${form.symbol} is live at ${token}`, "ok");
       log("Open the token page →", "ok", `#/agent/${token}`);
     } catch (err) {
@@ -261,6 +264,8 @@ export function Tokenize() {
           </div>
         </div>
       )}
+
+      <TopProfiles refresh={launches} />
     </section>
   );
 }
