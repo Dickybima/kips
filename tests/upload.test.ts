@@ -7,7 +7,7 @@ vi.mock("@vercel/blob", () => ({
   put: (path: string, body: unknown, opts: Record<string, unknown>) => put(path, body, opts),
 }));
 
-const { POST, GET, MAX_BYTES, looksLike } = await import("../api/upload");
+const { POST, GET, MAX_BYTES, looksLike, blobToken } = await import("../api/upload");
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
@@ -75,5 +75,14 @@ describe("api/upload", () => {
 
   it("only accepts POST", () => {
     expect(GET().status).toBe(405);
+  });
+});
+
+describe("blobToken", () => {
+  it("finds the store token under the default or a prefixed name", () => {
+    expect(blobToken({ BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_a" })).toBe("vercel_blob_rw_a");
+    expect(blobToken({ KIPS_LOGOS_READ_WRITE_TOKEN: "vercel_blob_rw_b" })).toBe("vercel_blob_rw_b");
+    expect(blobToken({ OTHER_READ_WRITE_TOKEN: "not-a-blob-token" })).toBeNull();
+    expect(blobToken({})).toBeNull();
   });
 });

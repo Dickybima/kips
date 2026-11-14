@@ -7,6 +7,19 @@ declare const process: { env: Record<string, string | undefined> };
 
 export const MAX_BYTES = 1_000_000;
 
+/**
+ * The Blob store's read-write token. Connecting a store adds it as
+ * BLOB_READ_WRITE_TOKEN, or as <PREFIX>_READ_WRITE_TOKEN when a prefix was
+ * chosen, so any variable holding a Vercel Blob read-write token is accepted.
+ */
+export function blobToken(env: Record<string, string | undefined> = process.env): string | null {
+  if (env.BLOB_READ_WRITE_TOKEN) return env.BLOB_READ_WRITE_TOKEN;
+  for (const [key, value] of Object.entries(env)) {
+    if (key.endsWith("READ_WRITE_TOKEN") && value?.startsWith("vercel_blob_rw_")) return value;
+  }
+  return null;
+}
+
 const TYPES: Record<string, string> = {
   "image/webp": "webp",
   "image/png": "png",
@@ -39,8 +52,12 @@ export async function POST(request: Request): Promise<Response> {
   if (bytes.byteLength === 0) return json({ error: "The image is empty." }, 400);
   if (bytes.byteLength > MAX_BYTES) return json({ error: "That image is too large (1 MB max)." }, 413);
   if (!looksLike(type, bytes)) return json({ error: "That file is not a valid image." }, 415);
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return json({ error: "Image uploads are not set up yet: connect a Vercel Blob store to this project." }, 503);
+  const token = blobToken();
+  if (!token) {
+    return json(
+      { error: "Image uploads are not set up yet: connect a Vercel Blob store to this project, then redeploy." },
+      503,
+    );
   }
   try {
     const blob = await put(`agents/${crypto.randomUUID()}.${ext}`, new Blob([bytes], { type }), {
@@ -48,6 +65,7 @@ export async function POST(request: Request): Promise<Response> {
       contentType: type,
       addRandomSuffix: false,
       cacheControlMaxAge: 31_536_000,
+      token,
     });
     return json({ url: blob.url });
   } catch {
