@@ -14,8 +14,9 @@ import { Features } from "./pages/Features";
 import { Home } from "./pages/Home";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Network } from "./pages/Network";
+import { Terminal } from "./pages/Terminal";
 
-type Page = "home" | "features" | "how-it-works" | "agent" | "explore" | "network";
+type Page = "home" | "features" | "how-it-works" | "agent" | "explore" | "terminal" | "network";
 type Route = { page: Page } | { page: "token"; token: Address };
 
 export const NAV: { page: Page; label: string; blurb: string }[] = [
@@ -23,6 +24,7 @@ export const NAV: { page: Page; label: string; blurb: string }[] = [
   { page: "how-it-works", label: "How it works", blurb: "Four steps from an idea to a live token." },
   { page: "agent", label: "Kips", blurb: "Talk to KIPS and launch an agent token." },
   { page: "explore", label: "Explore", blurb: "Every agent launched with KIPS." },
+  { page: "terminal", label: "Terminal", blurb: "Buy and sell agent tokens by chat." },
   { page: "network", label: "Network", blurb: "Live Robinhood Chain stats and contracts." },
 ];
 
@@ -71,7 +73,7 @@ export function App() {
   }, [theme]);
 
   const active = route.page === "token" ? "explore" : route.page;
-  const full = route.page === "agent";
+  const full = route.page === "agent" || route.page === "terminal";
 
   return (
     <div className={full ? "shell shell-full" : "shell"}>
@@ -117,6 +119,7 @@ export function App() {
         {route.page === "how-it-works" && <HowItWorks />}
         {route.page === "agent" && <Agent />}
         {route.page === "explore" && <Explore />}
+        {route.page === "terminal" && <Terminal />}
         {route.page === "network" && <Network />}
         {route.page === "token" && <AgentPage key={route.token} token={route.token} />}
       </main>

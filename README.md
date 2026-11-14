@@ -10,6 +10,7 @@ Every KIPS agent is a Pons v2 token. KIPS adds no contracts and no backend: it i
 - **Agent** — a chat that turns free-form messages (`name: Atlas ticker: ATLAS category: trading`) into a `blueprint.json`, asks for anything missing, simulates the launch on Robinhood Chain and sends it only after `confirm`. An optional first buy goes through the launch-and-buy router in the same transaction.
 - **Logo upload** — in the Agent chat, the image button (or dropping or pasting an image) crops the picture to a 512×512 square in the browser and uploads it through `api/upload.ts` to Vercel Blob. The returned public URL becomes the token's on-chain logo.
 - **Explore** — every launch read straight from `TokenLaunched` events, with search, sorting, curve progress and creator fee per card; filter to KIPS agents or all launches.
+- **Terminal** — trade by chat: `swap 0.1 eth to kips`, `sell 50% kips`, `price kips`, `balance`. Tickers resolve to the official $KIPS token or any KIPS agent (or pass a contract address). Each order is quoted from the live curve with a slippage limit, shown in `order.json`, simulated, and only then sent to the wallet. Bonding-curve trades only; graduated tokens trade in their Uniswap v4 pool.
 - **Network** — live Robinhood Chain stats, launch terms and contract addresses, with an "Add to wallet" button.
 - **Trade** — buy and sell on an agent's bonding curve, with quotes computed locally from on-chain curve state.
 - **Wallets** — the connect button lists every wallet installed in the browser (EIP-6963), with switch and disconnect.
@@ -77,6 +78,7 @@ Logo uploads need a Blob store connected to the Vercel project: **Storage → Cr
 - `src/lib/chainStats.ts` — one shared poller for live block, gas and launch terms
 - `api/upload.ts` — Vercel Function that validates and stores agent logos in Vercel Blob
 - `src/lib/kips/image.ts` — crops and shrinks a logo in the browser before upload
+- `src/lib/kips/trade-intent.ts` — reads trades out of Terminal chat messages
 - `src/pages/` — Home, Features, How it works, Agent (chat), Explore, Network, and the token page
 - `tests/` — quote math, profile encoding, ABI selectors
 
