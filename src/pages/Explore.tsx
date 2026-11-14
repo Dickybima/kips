@@ -19,6 +19,8 @@ type Sort = "newest" | "oldest" | "name";
 
 /** How many agents the Home preview shows before linking to the full page. */
 const PREVIEW_COUNT = 6;
+/** How often Explore checks the chain for newly launched agents. */
+const LIVE_REFRESH_MS = 20_000;
 
 /**
  * Lists KIPS agents. As a page it has search, sorting and paging; with
@@ -34,27 +36,32 @@ export function Explore({ preview = false }: { preview?: boolean }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
   const started = useRef(false);
+  /** Highest block already scanned; new launches above it are picked up live. */
+  const newestScanned = useRef<bigint | null>(null);
   const checkedBefore = useRef(0);
 
   // Only tokens launched through KIPS are listed: launches since KIPS went live
   // whose on-chain description carries a KIPS agent profile.
+  // Each agent appears as soon as it is found; progress and fees fill in after.
+  const addAgent = useCallback((a: { meta: TokenMeta; curve: `0x${string}`; block: bigint }) => {
+    if (isOfficial(a.meta.token)) return; // shown in its own section
+    setItems((prev) => (prev.some((p) => p.meta.token === a.meta.token) ? prev : [...prev, { ...a, stats: null }]));
+    readCardStats(a.meta.token, a.curve).then(
+      (stats) => setItems((prev) => prev.map((p) => (p.meta.token === a.meta.token ? { ...p, stats } : p))),
+      () => {},
+    );
+  }, []);
+
   const load = useCallback(async (from: bigint | undefined) => {
     setLoading(true);
     setError("");
     try {
       const to = from ?? (await publicClient.getBlockNumber());
+      if (from === undefined) newestScanned.current = to;
       const base = checkedBefore.current;
       const { next, checked: n } = await scanAgents(to, {
         onProgress: (c) => setChecked(base + c),
-        // Each agent appears as soon as it is found; progress and fees fill in after.
-        onFound: (a) => {
-          if (isOfficial(a.meta.token)) return; // shown in its own section
-          setItems((prev) => (prev.some((p) => p.meta.token === a.meta.token) ? prev : [...prev, { ...a, stats: null }]));
-          readCardStats(a.meta.token, a.curve).then(
-            (stats) => setItems((prev) => prev.map((p) => (p.meta.token === a.meta.token ? { ...p, stats } : p))),
-            () => {},
-          );
-        },
+        onFound: addAgent,
       });
       checkedBefore.current = base + n;
       setCursor(next);
@@ -78,6 +85,28 @@ export function Explore({ preview = false }: { preview?: boolean }) {
       setOfficial((o) => (o ? { ...o, stats } : o));
     })().catch(() => {});
   }, [load]);
+
+  // Pick up agents launched while the page is open, without a reload.
+  useEffect(() => {
+    let running = false;
+    const id = setInterval(async () => {
+      const from = newestScanned.current;
+      if (running || from === null) return;
+      running = true;
+      try {
+        const head = await publicClient.getBlockNumber();
+        if (head > from) {
+          await scanAgents(head, { floor: from + 1n, onFound: addAgent });
+          newestScanned.current = head;
+        }
+      } catch {
+        // try again on the next tick
+      } finally {
+        running = false;
+      }
+    }, LIVE_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [addAgent]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
