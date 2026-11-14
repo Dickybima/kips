@@ -13,8 +13,8 @@ export interface ProfileToken {
 
 export interface RankedProfile {
   handle: string;
-  /** The first token launched for this profile. */
-  token: ProfileToken;
+  /** The first token launched for this profile through KIPS, if any. */
+  token: ProfileToken | null;
   /** How many other tokens were launched for the same profile. */
   others: number;
   profile: XProfile | null;
@@ -40,8 +40,25 @@ export function rankByFollowers(list: RankedProfile[]): RankedProfile[] {
     const fa = a.profile?.followers ?? -1;
     const fb = b.profile?.followers ?? -1;
     if (fa !== fb) return fb - fa;
-    return a.token.block > b.token.block ? -1 : a.token.block < b.token.block ? 1 : 0;
+    const ba = a.token?.block ?? -1n;
+    const bb = b.token?.block ?? -1n;
+    return ba > bb ? -1 : ba < bb ? 1 : 0;
   });
+}
+
+/**
+ * The leaderboard: the most-followed accounts, with KIPS tokens attached where
+ * a profile was tokenized, plus tokenized profiles outside the top list.
+ */
+export function mergeTop(top: XProfile[], tokenized: RankedProfile[]): RankedProfile[] {
+  const byHandle = new Map<string, RankedProfile>();
+  for (const p of top) byHandle.set(p.handle.toLowerCase(), { handle: p.handle, token: null, others: 0, profile: p });
+  for (const t of tokenized) {
+    const key = t.handle.toLowerCase();
+    const seen = byHandle.get(key);
+    byHandle.set(key, seen ? { ...seen, token: t.token, others: t.others } : t);
+  }
+  return rankByFollowers([...byHandle.values()]);
 }
 
 /** Runs `fn` over `items` with at most `limit` calls in flight. */

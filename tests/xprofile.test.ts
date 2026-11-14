@@ -81,3 +81,17 @@ describe("api/x-profile", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("top accounts", () => {
+  it("ranks the readable accounts by followers and skips the rest", async () => {
+    const { lookupMany } = await import("../api/x-profile");
+    const f = vi.fn<typeof fetch>(async (url) => {
+      const h = String(url).split("/").pop();
+      if (h === "gone") return reply(404, { code: 404, message: "User not found" });
+      const followers = { small: 10, big: 5_000 }[h as "small" | "big"];
+      return reply(200, { user: { ...USER, screen_name: h, followers } });
+    });
+    const out = await lookupMany(["small", "gone", "big"], f, 0, 2);
+    expect(out.map((p) => p.handle)).toEqual(["big", "small"]);
+  });
+});

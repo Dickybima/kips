@@ -3,5 +3,6 @@
   "framework": "vite",
   "installCommand": "unset npm_config_cache_dir NPM_CONFIG_CACHE_DIR; npm install",
   "buildCommand": "unset npm_config_cache_dir NPM_CONFIG_CACHE_DIR; npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "functions": { "api/x-profile.ts": { "maxDuration": 60 } }
 }

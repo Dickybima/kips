@@ -265,7 +265,15 @@ export function Tokenize() {
         </div>
       )}
 
-      <TopProfiles refresh={launches} />
+      <TopProfiles
+        refresh={launches}
+        onPick={(handle) => {
+          if (finding || launching) return;
+          setQuery(handle);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          void find(handle);
+        }}
+      />
     </section>
   );
 }
