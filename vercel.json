@@ -4,5 +4,18 @@
   "installCommand": "unset npm_config_cache_dir NPM_CONFIG_CACHE_DIR; npm install",
   "buildCommand": "unset npm_config_cache_dir NPM_CONFIG_CACHE_DIR; npm run build",
   "outputDirectory": "dist",
-  "functions": { "api/x-profile.ts": { "maxDuration": 60 } }
+  "functions": {
+    "api/x-profile.ts": {
+      "maxDuration": 60
+    },
+    "api/og.ts": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/t/:token",
+      "destination": "/api/share?token=:token"
+    }
+  ]
 }

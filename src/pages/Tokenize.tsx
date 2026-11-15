@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import { ArrowRight, XLogo } from "../components/Icons";
 import { Corners, PageHead } from "../components/Ui";
 import { TopProfiles } from "../components/TopProfiles";
+import { ShareButtons } from "../components/Share";
 import { LIMITS, byteLength, validateLaunchForm } from "../lib/kips/agent";
 import {
   XProfileError,
@@ -227,6 +228,7 @@ export function Tokenize() {
               >
                 Tokenize another
               </button>
+              <ShareButtons token={launched} symbol={symbol} name={name} className="chip-row" />
             </div>
           ) : (
             <button className="btn btn-solid full" onClick={() => void launch()} disabled={launching || !symbolOk || !nameOk}>

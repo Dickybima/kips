@@ -570,3 +570,5 @@ ul.note { padding-left: 28px; }
   .tp-row .logo { width: 36px; height: 36px; }
   .tp-trade { grid-column: 3 / -1; justify-self: start; }
 }
+
+.bp-share { justify-content: center; }

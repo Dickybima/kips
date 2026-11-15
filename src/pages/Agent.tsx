@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import { ArrowUp, ImageIcon, Sparkle } from "../components/Icons";
 import { LogoError, prepareLogo, uploadLogo } from "../lib/kips/image";
 import { Label } from "../components/Ui";
+import { ShareButtons } from "../components/Share";
 import { validateLaunchForm } from "../lib/kips/agent";
 import { parseIntent, parseQuick } from "../lib/kips/intent";
 import { STEPS, answerStep, initialBuyWei, taxBps, toLaunchForm, type Answers } from "../lib/kips/wizard";
@@ -509,6 +510,7 @@ export function Agent() {
                 <a className="btn btn-solid full" href={`#/agent/${launched}`}>
                   View your token
                 </a>
+                <ShareButtons token={launched} symbol={answers.symbol ?? ""} name={answers.name ?? ""} className="chip-row bp-share" />
                 <button className="btn btn-ghost full" onClick={() => submit("new")} disabled={busy}>
                   Launch another
                 </button>

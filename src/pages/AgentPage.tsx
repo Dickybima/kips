@@ -24,6 +24,7 @@ import { useWallet } from "../lib/wallet";
 import { CopyButton } from "../components/Ui";
 import { isOfficial } from "../lib/kips/official";
 import { BurnPanel } from "../components/Burn";
+import { ShareButtons } from "../components/Share";
 import { Logo } from "./Explore";
 
 const SLIPPAGE_BPS = 300n;
@@ -149,6 +150,8 @@ export function AgentPage({ token }: { token: Address }) {
           <p className="note">This token was launched without a KIPS agent profile.</p>
         )}
         <p className="pre">{meta?.about || "No description."}</p>
+
+        {meta && <ShareButtons token={token} symbol={meta.symbol} name={meta.name} />}
 
         {meta?.profile && meta.profile.skills.length > 0 && (
           <div className="tags">
