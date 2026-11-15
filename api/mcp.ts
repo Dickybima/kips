@@ -40,7 +40,7 @@ const client = createPublicClient({
     rpcUrls: { default: { http: [RPC] } },
     contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
   },
-  transport: http(RPC, { batch: { batchSize: 40 }, retryCount: 2 }),
+  transport: http(RPC, { batch: { batchSize: 10 }, retryCount: 3 }),
 });
 
 const factoryAbi = parseAbi([
@@ -166,9 +166,48 @@ async function readMeta(token: Address, block = 0n): Promise<Meta> {
   return { token, name, symbol, logo, ...splitDescription(description), socials, block };
 }
 
-/** Token metadata is fixed at launch, so it is kept for the life of the instance. */
+/**
+ * Token metadata is fixed at launch, so it is kept for the life of the
+ * instance: a Meta for KIPS tokens, null for tokens that are not KIPS tokens.
+ * Reads that fail are not cached; they are retried on the next request.
+ */
 const metaCache = new Map<string, Meta | null>();
+const retry = new Map<string, bigint>();
 let registry: { at: number; head: bigint; agents: Meta[] } | null = null;
+const CHUNK = 200;
+
+/** Reads one batch of launches: the description first, name and ticker only for KIPS tokens. */
+async function readBatch(batch: [Address, bigint][]): Promise<void> {
+  const infos = await Promise.all(
+    batch.map(([token]) => client.readContract({ address: token, abi: tokenAbi, functionName: "getTokenInfo" }).catch(() => null)),
+  );
+  const kips: [Address, bigint, (typeof infos)[number] & object][] = [];
+  batch.forEach(([token, block], i) => {
+    const info = infos[i];
+    if (!info) return void retry.set(token.toLowerCase(), block);
+    if (!info[2].includes(KIPS_TAG) && token.toLowerCase() !== OFFICIAL.toLowerCase()) {
+      metaCache.set(token.toLowerCase(), null);
+      return void retry.delete(token.toLowerCase());
+    }
+    kips.push([token, block, info]);
+  });
+  await Promise.all(
+    kips.map(async ([token, block, info]) => {
+      try {
+        const t = { address: token, abi: tokenAbi } as const;
+        const [name, symbol] = await Promise.all([
+          client.readContract({ ...t, functionName: "name" }),
+          client.readContract({ ...t, functionName: "symbol" }),
+        ]);
+        const [, logo, description, socials] = info;
+        metaCache.set(token.toLowerCase(), { token, name, symbol, logo, ...splitDescription(description), socials, block });
+        retry.delete(token.toLowerCase());
+      } catch {
+        retry.set(token.toLowerCase(), block);
+      }
+    }),
+  );
+}
 
 /** Every token launched through KIPS (it carries a KIPS profile), newest first, plus the official token. */
 async function kipsTokens(): Promise<Meta[]> {
@@ -176,18 +215,18 @@ async function kipsTokens(): Promise<Meta[]> {
   const head = await client.getBlockNumber();
   const from = registry ? registry.head + 1n : KIPS_START_BLOCK;
   const logs = from > head ? [] : await client.getLogs({ address: FACTORY, event: launchedEvent, fromBlock: from, toBlock: head });
-  await Promise.all(
-    logs.map(async (l) => {
-      const token = l.args.token!;
-      if (metaCache.has(token.toLowerCase())) return;
-      const meta = await readMeta(token, l.blockNumber ?? 0n).catch(() => null);
-      metaCache.set(token.toLowerCase(), meta && meta.category ? meta : null);
-    }),
-  );
-  if (!metaCache.get(OFFICIAL.toLowerCase())) metaCache.set(OFFICIAL.toLowerCase(), await readMeta(OFFICIAL).catch(() => null));
+  const todo = new Map<string, [Address, bigint]>();
+  for (const [key, block] of retry) todo.set(key, [key as Address, block]);
+  for (const l of logs) {
+    const token = l.args.token!;
+    if (!metaCache.has(token.toLowerCase())) todo.set(token.toLowerCase(), [token, l.blockNumber ?? 0n]);
+  }
+  if (!metaCache.get(OFFICIAL.toLowerCase())) todo.set(OFFICIAL.toLowerCase(), [OFFICIAL, metaCache.get(OFFICIAL.toLowerCase())?.block ?? 0n]);
+  const list = [...todo.values()];
+  for (let i = 0; i < list.length; i += CHUNK) await readBatch(list.slice(i, i + CHUNK));
   const agents = [...metaCache.values()]
     .filter((m): m is Meta => m !== null && !HIDDEN.has(m.token.toLowerCase()))
-    .sort((a, b) => (a.token === OFFICIAL ? -1 : b.token === OFFICIAL ? 1 : a.block > b.block ? -1 : a.block < b.block ? 1 : 0));
+    .sort((a, b) => (isOfficial(a.token) ? -1 : isOfficial(b.token) ? 1 : a.block > b.block ? -1 : a.block < b.block ? 1 : 0));
   registry = { at: Date.now(), head, agents };
   return agents;
 }
@@ -249,12 +288,14 @@ function parseEth(raw: unknown, label: string): bigint {
   return v;
 }
 
+const isOfficial = (t: string) => t.toLowerCase() === OFFICIAL.toLowerCase();
+
 function summary(m: Meta) {
   return {
     address: m.token,
     name: m.name,
     symbol: m.symbol,
-    category: m.token === OFFICIAL ? "official" : m.category,
+    category: isOfficial(m.token) ? "official" : m.category,
     description: m.about,
     logo: m.logo || null,
     x: m.socials.twitter || null,
