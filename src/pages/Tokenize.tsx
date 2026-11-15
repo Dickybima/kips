@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import { ArrowRight, XLogo } from "../components/Icons";
 import { Corners, PageHead } from "../components/Ui";
 import { TopProfiles } from "../components/TopProfiles";
+import { hashParams } from "../lib/kips/prefill";
 import { ShareButtons } from "../components/Share";
 import { LIMITS, byteLength, validateLaunchForm } from "../lib/kips/agent";
 import {
@@ -54,6 +55,19 @@ export function Tokenize() {
       live = false;
     };
   }, [account, sharedEnv]);
+
+  // A filled-in link (#/tokenize?u=jack) looks the profile up; launching still waits for the person.
+  const linked = useRef(false);
+  useEffect(() => {
+    if (linked.current) return;
+    linked.current = true;
+    const u = hashParams().get("u");
+    if (u) {
+      setQuery(u);
+      void find(u);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function find(raw = query) {
     const handle = parseHandle(raw);

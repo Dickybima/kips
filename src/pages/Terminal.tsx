@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { hashParams } from "../lib/kips/prefill";
 import { getAddress, isAddress, type Address } from "viem";
 import { ArrowUp, Sparkle } from "../components/Icons";
 import { Label } from "../components/Ui";
@@ -64,7 +65,8 @@ const HELP = [
 export function Terminal() {
   const { account, connect, getClient } = useWallet();
   const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [input, setInput] = useState("");
+  // A filled-in link (#/terminal?cmd=...) types the order in; the person still sends and confirms it.
+  const [input, setInput] = useState(() => (hashParams().get("cmd") ?? "").slice(0, 200));
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [slippageBps, setSlippageBps] = useState(300n);

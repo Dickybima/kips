@@ -6,6 +6,7 @@ import { Label } from "../components/Ui";
 import { ShareButtons } from "../components/Share";
 import { validateLaunchForm } from "../lib/kips/agent";
 import { parseIntent, parseQuick } from "../lib/kips/intent";
+import { hashParams, launchPrefill } from "../lib/kips/prefill";
 import { STEPS, answerStep, initialBuyWei, taxBps, toLaunchForm, type Answers } from "../lib/kips/wizard";
 import { errMsg, fmt, shortAddr } from "../lib/format";
 import { useChainStats } from "../lib/chainStats";
@@ -111,6 +112,12 @@ export function Agent() {
     if (greeted.current) return;
     greeted.current = true;
     pending.current = "name";
+    const prefill = launchPrefill(hashParams());
+    if (Object.keys(prefill).length > 0) {
+      say("kips", "Hi, I'm KIPS. This launch was filled in from a link. Check the preview, then press Launch token: nothing is sent until you approve it in your wallet.");
+      nextQuestion(applyFields(prefill));
+      return;
+    }
     say("kips", "Hi, I'm KIPS. Let's launch your agent's token. What's your agent called?\nOr say it all at once: Atlas $ATLAS Trades momentum for you");
   }, [say]);
 

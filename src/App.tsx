@@ -16,8 +16,9 @@ import { HowItWorks } from "./pages/HowItWorks";
 import { Network } from "./pages/Network";
 import { Terminal } from "./pages/Terminal";
 import { Tokenize } from "./pages/Tokenize";
+import { Mcp } from "./pages/Mcp";
 
-type Page = "home" | "features" | "how-it-works" | "agent" | "tokenize" | "explore" | "terminal" | "network";
+type Page = "home" | "features" | "how-it-works" | "agent" | "tokenize" | "explore" | "terminal" | "network" | "mcp";
 type Route = { page: Page } | { page: "token"; token: Address };
 
 export const NAV: { page: Page; label: string; blurb: string }[] = [
@@ -28,10 +29,11 @@ export const NAV: { page: Page; label: string; blurb: string }[] = [
   { page: "explore", label: "Explore", blurb: "Every agent launched with KIPS." },
   { page: "terminal", label: "Terminal", blurb: "Buy and sell agent tokens by chat." },
   { page: "network", label: "Network", blurb: "Live Robinhood Chain stats and contracts." },
+  { page: "mcp", label: "MCP", blurb: "Use KIPS from Claude, Cursor and other AI agents." },
 ];
 
 function parseRoute(hash: string): Route {
-  const [, page, arg] = hash.replace(/^#/, "").split("/");
+  const [, page, arg] = hash.replace(/^#/, "").split("?")[0].split("/");
   if (page === "agent" && arg && isAddress(arg)) return { page: "token", token: arg };
   if (page === "kips" || page === "launch") return { page: "agent" };
   const known = NAV.find((n) => n.page === page);
@@ -51,6 +53,8 @@ function initialTheme(): Theme {
 
 export function App() {
   const [route, setRoute] = useState<Route>(() => parseRoute(location.hash));
+  // Filled-in links (#/agent?name=...) remount their page so it reads the new values.
+  const [query, setQuery] = useState(() => location.hash.split("?")[1] ?? "");
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [menu, setMenu] = useState(false);
   const { account, connect } = useWallet();
@@ -58,6 +62,7 @@ export function App() {
   useEffect(() => {
     const onHash = () => {
       setRoute(parseRoute(location.hash));
+      setQuery(location.hash.split("?")[1] ?? "");
       setMenu(false);
       window.scrollTo(0, 0);
     };
@@ -119,11 +124,12 @@ export function App() {
         {route.page === "home" && <Home />}
         {route.page === "features" && <Features />}
         {route.page === "how-it-works" && <HowItWorks />}
-        {route.page === "agent" && <Agent />}
-        {route.page === "tokenize" && <Tokenize />}
+        {route.page === "agent" && <Agent key={query} />}
+        {route.page === "tokenize" && <Tokenize key={query} />}
         {route.page === "explore" && <Explore />}
-        {route.page === "terminal" && <Terminal />}
+        {route.page === "terminal" && <Terminal key={query} />}
         {route.page === "network" && <Network />}
+        {route.page === "mcp" && <Mcp />}
         {route.page === "token" && <AgentPage key={route.token} token={route.token} />}
       </main>
 
