@@ -37,3 +37,18 @@ describe("card helpers", () => {
     expect(clip("short", 12)).toBe("short");
   });
 });
+
+describe("logo sources", async () => {
+  const { logoSources } = await import("../api/og");
+  it("races IPFS gateways and keeps plain URLs as they are", () => {
+    expect(logoSources("ipfs://bafkabc")).toEqual([
+      "https://ipfs.io/ipfs/bafkabc",
+      "https://dweb.link/ipfs/bafkabc",
+      "https://w3s.link/ipfs/bafkabc",
+      "https://gateway.pinata.cloud/ipfs/bafkabc",
+    ]);
+    expect(logoSources("https://www.trykips.app/api/logo?id=x.webp")).toEqual(["https://www.trykips.app/api/logo?id=x.webp"]);
+    expect(logoSources("https://ipfs.io/ipfs/bafkabc")[1]).toBe("https://dweb.link/ipfs/bafkabc");
+    expect(logoSources("javascript:alert(1)")).toEqual([]);
+  });
+});

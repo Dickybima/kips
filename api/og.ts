@@ -137,17 +137,40 @@ function loadFonts() {
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/svg+xml", "image/webp"];
 
-/** The logo as a data URL, or null when it cannot be fetched safely. */
+/** Public IPFS gateways, raced: a single gateway is often too slow for a card. */
+const IPFS_GATEWAYS = ["https://ipfs.io/ipfs/", "https://dweb.link/ipfs/", "https://w3s.link/ipfs/", "https://gateway.pinata.cloud/ipfs/"];
+
+/** Every URL the logo can be fetched from: one for http(s), one per gateway for ipfs://. */
+export function logoSources(raw: string): string[] {
+  const url = raw.trim();
+  if (url.startsWith("ipfs://")) {
+    const path = url.slice(7).replace(/^ipfs\//, "");
+    return path ? IPFS_GATEWAYS.map((g) => g + path) : [];
+  }
+  const gateway = url.match(/^https?:\/\/[^/]+\/ipfs\/(.+)$/i);
+  if (gateway) return [...new Set([url, ...IPFS_GATEWAYS.map((g) => g + gateway[1])])];
+  return /^https?:\/\//i.test(url) ? [url] : [];
+}
+
+async function fetchImage(url: string, signal: AbortSignal): Promise<Uint8Array> {
+  const res = await fetch(url, { signal });
+  const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  // Some gateways answer with a generic type; sharp checks the bytes anyway.
+  if (!res.ok || !(IMAGE_TYPES.includes(type) || type === "application/octet-stream")) throw new Error(`logo ${res.status} ${type}`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength > 2_000_000) throw new Error("logo too large");
+  return bytes;
+}
+
+/** The logo as a PNG data URL, or null when it cannot be fetched or read. */
 async function logoData(raw: string): Promise<string | null> {
-  let url = raw.trim();
-  if (url.startsWith("ipfs://")) url = `https://ipfs.io/ipfs/${url.slice(7).replace(/^ipfs\//, "")}`;
-  if (!/^https?:\/\//i.test(url)) return null;
+  const sources = logoSources(raw);
+  if (sources.length === 0) return null;
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 7000);
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
-    if (!res.ok || !IMAGE_TYPES.includes(type)) return null;
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    if (bytes.byteLength > 2_000_000) return null;
+    const bytes = await Promise.any(sources.map((u) => fetchImage(u, stop.signal)));
+    stop.abort(); // the first answer wins; drop the slower gateways
     // The rasteriser cannot read WebP (the format KIPS uploads use), so every
     // logo is turned into a small PNG first.
     const png = await sharp(bytes, { animated: false, limitInputPixels: 25_000_000 })
@@ -157,6 +180,8 @@ async function logoData(raw: string): Promise<string | null> {
     return `data:image/png;base64,${png.toString("base64")}`;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
